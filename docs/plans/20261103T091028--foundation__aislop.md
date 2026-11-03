@@ -4,7 +4,7 @@ title: "Foundation: runtime hooks for Copilot and OpenCode"
 summary: "Adopt the docs system and add per-edit runtime hook adapters for the Copilot shared harness and OpenCode v2"
 status: in-progress
 created: 2026-11-03T09:10:28
-updated: 2026-11-03T12:14:23
+updated: 2026-11-03T12:14:42
 tags: ["aislop", "hooks", "copilot", "opencode"]
 ---
 
@@ -12,7 +12,7 @@ tags: ["aislop", "hooks", "copilot", "opencode"]
 
 ## Status
 
-Documentation system adopted on branch `feat/copilot-opencode-hooks`. Phase 1 complete at 674636a. Phase 2 (Copilot) complete at e630c5e. Phase 3 (OpenCode) complete at 08fbad5. Phase 4: live checks, Q6, and cross-seam done. Tag pending. No upstream PR ([KD-006](../decisions/20261103T121350--fork-does-not-contribute-upstream__aislop.md)).
+Documentation system adopted on branch `feat/copilot-opencode-hooks`. Phase 1 complete at 674636a. Phase 2 (Copilot) complete at e630c5e. Phase 3 (OpenCode) complete at 08fbad5. Phase 4 complete, tagged wave-hooks-v1. No upstream PR ([KD-006](../decisions/20261103T121350--fork-does-not-contribute-upstream__aislop.md)).
 
 ## Context
 
@@ -126,7 +126,7 @@ Risk: LOW. Orchestrator runs existing tools. One reviewer for the cross-seam evi
 - [x] Manual check Q6: VS Code 1.144.0 Copilot session target reads `.github/hooks/` and honours trust the same way as the CLI, user at the keyboard, result in a research note: [R-001](../research/20261103T115650--vscode-copilot-hook-delivery__aislop.md)
 - [x] Cross-seam: path extraction in `claude.ts`, the pi extension, and the OpenCode plugin each mutated in turn, only its own test fails, pi has no test (C13), capture named: [evidence](../evidence/20261103-wu3-integration.md)
 - [x] Cross-seam: `buildHookGroup` matcher changed, both installer tests fail, capture named: [evidence](../evidence/20261103-wu3-integration.md)
-- [ ] Wave tag `wave-hooks-v1`, push with `--follow-tags` to `fork`
+- [x] Wave tag `wave-hooks-v1`, push with `--follow-tags` to `fork`: wave-hooks-v1
 - [-] Draft PR to `scanaislop/aislop` `develop`: [KD-006](../decisions/20261103T121350--fork-does-not-contribute-upstream__aislop.md)
 
 ## Mechanisms
