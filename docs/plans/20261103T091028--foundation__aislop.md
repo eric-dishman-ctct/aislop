@@ -4,7 +4,7 @@ title: "Foundation: runtime hooks for Copilot and OpenCode"
 summary: "Adopt the docs system and add per-edit runtime hook adapters for the Copilot shared harness and OpenCode v2"
 status: in-progress
 created: 2026-11-03T09:10:28
-updated: 2026-11-03T11:13:46
+updated: 2026-11-03T11:19:01
 tags: ["aislop", "hooks", "copilot", "opencode"]
 ---
 
@@ -12,7 +12,7 @@ tags: ["aislop", "hooks", "copilot", "opencode"]
 
 ## Status
 
-Documentation system adopted on branch `feat/copilot-opencode-hooks`. Phase 1 complete at 674636a. Phase 2 (Copilot) complete at e630c5e. Phase 3 (OpenCode) reviewed, PASS at round 3, commit pending. Phase 4 started.
+Documentation system adopted on branch `feat/copilot-opencode-hooks`. Phase 1 complete at 674636a. Phase 2 (Copilot) complete at e630c5e. Phase 3 (OpenCode) complete at 08fbad5. Phase 4 (integration) in progress.
 
 ## Context
 
@@ -115,7 +115,7 @@ carried findings C4 and C6, and spike evidence E8 to E19 from the accepted plan.
 - [x] README and `docs/commands.md`: OpenCode runtime, 2.2.4 minimum, no quality gate, shell-edit gap: [evidence](../evidence/20261103-wu2-gates.md)
 - [x] `pnpm typecheck && pnpm test && pnpm scan` captured to `/tmp/opencode/wu2-gates.txt`: [evidence](../evidence/20261103-wu2-gates.md)
 - [x] Independent review PASS, row in Review log: [evidence](../evidence/20261103-wu2-gates.md)
-- [ ] Commit, staged by name
+- [x] Commit, staged by name: 08fbad5
 
 ### Phase 4: integration (WU-3)
 
