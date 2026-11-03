@@ -12,6 +12,7 @@ import { installCursor, resolveCursorPaths, uninstallCursor } from "./cursor.js"
 import { installGemini, resolveGeminiPaths, uninstallGemini } from "./gemini.js";
 import { installKilocode, resolveKilocodePaths, uninstallKilocode } from "./kilocode.js";
 import { installPi, resolvePiPaths, uninstallPi } from "./pi.js";
+import { installOpenCode, resolveOpenCodePaths, uninstallOpenCode } from "./opencode.js";
 import type { HookInstallOpts, HookInstallResult, HookUninstallResult } from "./types.js";
 import { installWindsurf, resolveWindsurfPaths, uninstallWindsurf } from "./windsurf.js";
 
@@ -25,7 +26,8 @@ export type AgentName =
 	| "cline"
 	| "kilocode"
 	| "antigravity"
-	| "copilot";
+	| "copilot"
+	| "opencode";
 
 export const ALL_AGENTS: AgentName[] = [
 	"claude",
@@ -38,6 +40,7 @@ export const ALL_AGENTS: AgentName[] = [
 	"kilocode",
 	"antigravity",
 	"copilot",
+	"opencode",
 ];
 
 export const AGENTS_PROJECT_ONLY: AgentName[] = ["windsurf", "cline", "kilocode", "antigravity"];
@@ -48,6 +51,7 @@ export const AGENTS_SUPPORTING_BOTH_SCOPES: AgentName[] = [
 	"pi",
 	"codex",
 	"copilot",
+	"opencode",
 ];
 
 interface AgentEntry {
@@ -82,6 +86,7 @@ const paths = {
 		const p = resolveCopilotPaths(opts);
 		return opts.scope === "project" ? [p.hookFile, p.instructionsFile] : [p.hookFile];
 	},
+	opencode: (opts: HookInstallOpts): string[] => [resolveOpenCodePaths(opts).plugin],
 };
 
 export const REGISTRY: Record<AgentName, AgentEntry> = {
@@ -99,6 +104,7 @@ export const REGISTRY: Record<AgentName, AgentEntry> = {
 		paths: paths.antigravity,
 	},
 	copilot: { install: installCopilot, uninstall: uninstallCopilot, paths: paths.copilot },
+	opencode: { install: installOpenCode, uninstall: uninstallOpenCode, paths: paths.opencode },
 };
 
 export const defaultScopeFor = (agent: AgentName): "global" | "project" =>

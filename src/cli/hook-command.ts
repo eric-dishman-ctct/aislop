@@ -27,7 +27,8 @@ type AgentFlagOpts = Partial<
 		| "cline"
 		| "kilocode"
 		| "antigravity"
-		| "copilot",
+		| "copilot"
+		| "opencode",
 		boolean
 	>
 >;
@@ -43,6 +44,7 @@ const AGENT_NAMES = [
 	"kilocode",
 	"antigravity",
 	"copilot",
+	"opencode",
 ] as const;
 
 const resolveScope = (flags: { global?: boolean; project?: boolean }): "global" | "project" => {
@@ -121,7 +123,7 @@ const addInstallOptions = (command: Command): Command =>
 		command
 			.option(
 				"--agent <names>",
-				"comma-separated agent list (claude,cursor,gemini,codex,windsurf,cline,kilocode,antigravity,copilot)",
+				"comma-separated agent list (claude,cursor,gemini,pi,codex,windsurf,cline,kilocode,antigravity,copilot,opencode)",
 			)
 			.option("-g, --global", "install to the user-scope config (default)")
 			.option("--project", "install to the project-scope config")
@@ -129,7 +131,7 @@ const addInstallOptions = (command: Command): Command =>
 			.option("--yes", "skip the confirmation prompt (reserved)")
 			.option(
 				"--quality-gate",
-				"add a Stop hook that blocks when the score regresses below the baseline (Claude and Copilot). The gate rescans files recorded from Edit, Write, and MultiEdit calls. It does not see shell edits to unrecorded files. Records persist across sessions until a Stop with no regression clears them.",
+				"add a Stop hook that blocks when the score regresses below the baseline (Claude and Copilot). The gate rescans files recorded from Edit, Write, and MultiEdit calls. It does not see shell edits to unrecorded files. Records persist across sessions until a Stop with no regression clears them. Not available for OpenCode.",
 			),
 	);
 
@@ -262,6 +264,12 @@ const registerCallbacks = (hook: Command): void => {
 		.description("Internal: pi extension tool_result callback (reads stdin)")
 		.action(async () => {
 			await hookRun("pi");
+		});
+	hook
+		.command("opencode", { hidden: true })
+		.description("Internal: OpenCode runtime callback (reads stdin)")
+		.action(async () => {
+			await hookRun("opencode");
 		});
 };
 

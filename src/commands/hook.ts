@@ -8,6 +8,7 @@ import {
 import { runCursorHook } from "../hooks/adapters/cursor.js";
 import { runGeminiHook } from "../hooks/adapters/gemini.js";
 import { runPiHook } from "../hooks/adapters/pi.js";
+import { runOpenCodeHook } from "../hooks/adapters/opencode.js";
 import {
 	AGENTS_PROJECT_ONLY,
 	AGENTS_SUPPORTING_BOTH_SCOPES,
@@ -53,6 +54,7 @@ export const AGENT_LABELS: Record<AgentName, { label: string; hint: string }> = 
 	kilocode: { label: "Kilo Code", hint: "rules-only, project" },
 	antigravity: { label: "Antigravity", hint: "rules-only, project" },
 	copilot: { label: "GitHub Copilot", hint: "runtime hook, global or project" },
+	opencode: { label: "OpenCode", hint: "runtime hook, global or project" },
 };
 
 interface InstallFlags {
@@ -94,6 +96,13 @@ const resolveOpts = (agent: AgentName, flags: InstallFlags): HookInstallOpts => 
 };
 
 export const hookInstall = async (flags: InstallFlags): Promise<void> => {
+	if (flags.qualityGate && flags.agents.includes("opencode")) {
+		process.stderr.write(
+			"The --quality-gate option is not available for OpenCode. No files were written.\n",
+		);
+		process.exitCode = 1;
+		return;
+	}
 	const items: HookInstallRenderItem[] = [];
 	for (const agent of flags.agents) {
 		const opts = resolveOpts(agent, flags);
@@ -287,6 +296,8 @@ export const hookRun = async (
 		exitCode = await runGeminiHook();
 	} else if (agent === "pi") {
 		exitCode = await runPiHook();
+	} else if (agent === "opencode") {
+		exitCode = await runOpenCodeHook();
 	} else {
 		process.stderr.write(`hook: agent "${agent}" has no runtime adapter (rules-file-only)\n`);
 		process.exit(0);

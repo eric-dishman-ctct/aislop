@@ -193,11 +193,13 @@ Session review commands:
 | `--project` | Install to project-scope config |
 | `--dry-run` | Print the planned diff without writing |
 | `--yes` | Skip confirmation prompt |
-| `--quality-gate` | Add a Stop hook that blocks when the score regresses below the baseline for Claude and Copilot. The gate rescans files recorded from Edit, Write, and MultiEdit calls. It does not see shell edits to unrecorded files. Records persist across sessions until a Stop with no regression clears them. |
+| `--quality-gate` | Add a Stop hook that blocks when the score regresses below the baseline for Claude and Copilot. The gate rescans files recorded from Edit, Write, and MultiEdit calls. It does not see shell edits to unrecorded files. Records persist across sessions until a Stop with no regression clears them. It is not available for OpenCode. |
 
-Agent shortcut flags: `--claude`, `--cursor`, `--gemini`, `--pi`, `--codex`, `--windsurf`, `--cline`, `--kilocode`, `--antigravity`, `--copilot`.
+Agent shortcut flags: `--claude`, `--cursor`, `--gemini`, `--pi`, `--codex`, `--windsurf`, `--cline`, `--kilocode`, `--antigravity`, `--copilot`, `--opencode`.
 
 Copilot runtime hooks are Preview. They need VS Code 1.144.0 or later, or Copilot CLI 1.0.105 or later. Trust the folder with `--trust-folder` or `trustedFolders` before hooks run. Run `aislop hook baseline` before the quality gate. The gate rescans files recorded from Edit, Write, and MultiEdit calls. It does not see shell edits to unrecorded files. Records persist across sessions until a Stop with no regression clears them. Native camelCase payloads are unsupported. Copilot scans report `claude` telemetry.
+
+OpenCode runtime hooks need OpenCode 2.2.4 or later. Install them at the global or project scope. OpenCode has no quality gate. Shell-tool edits do not fire a file hook. A running OpenCode server does not load a newly installed plugin. Start a new OpenCode process after install.
 
 ### hook uninstall
 

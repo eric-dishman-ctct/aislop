@@ -4,7 +4,7 @@ title: "Foundation: runtime hooks for Copilot and OpenCode"
 summary: "Adopt the docs system and add per-edit runtime hook adapters for the Copilot shared harness and OpenCode v2"
 status: in-progress
 created: 2026-11-03T09:10:28
-updated: 2026-11-03T09:57:33
+updated: 2026-11-03T11:13:46
 tags: ["aislop", "hooks", "copilot", "opencode"]
 ---
 
@@ -12,7 +12,7 @@ tags: ["aislop", "hooks", "copilot", "opencode"]
 
 ## Status
 
-Documentation system adopted on branch `feat/copilot-opencode-hooks`. Phase 1 complete at 674636a. Phase 2 (Copilot) complete at e630c5e. Phase 3 (OpenCode) in progress.
+Documentation system adopted on branch `feat/copilot-opencode-hooks`. Phase 1 complete at 674636a. Phase 2 (Copilot) complete at e630c5e. Phase 3 (OpenCode) reviewed, PASS at round 3, commit pending. Phase 4 started.
 
 ## Context
 
@@ -92,29 +92,29 @@ later tool call in the session into a tool error, or feedback never reaches the 
 Brief: in-prompt. It names this plan, the S3 prototype `s2/s3-plugin.ts` as reference, the
 carried findings C4 and C6, and spike evidence E8 to E19 from the accepted plan.
 
-- [ ] `src/hooks/install/opencode.ts` generates `aislop.ts` with `Plugin.define`, two hooks: `tool.hook("execute.after")` and `session.hook("context")`
-- [ ] Generated plugin filters `edit`, `write`, `patch` with `status === "completed"`
-- [ ] Paths from `result.output.applied[].target`, else `input.path`
-- [ ] Cwd from `ctx.location.directory`
-- [ ] One spawn per tool call with all paths in `file_paths`
-- [ ] 8 s timeout bounds the whole hook
-- [ ] `stdin.on("error")` listener
-- [ ] No exception escapes either hook
-- [ ] Buffer keyed by `sessionID` with 10 minute expiry
-- [ ] Only a non-empty trimmed message is buffered
-- [ ] `context` hook appends `{role: "user", content: [{type: "text", text}]}` to `event.messages` for its own session only and deletes the entry
-- [ ] Install to `.opencode/plugins/aislop.ts` (project) or `~/.config/opencode/plugins/aislop.ts` (global)
-- [ ] `opencode.json` untouched
-- [ ] `src/hooks/adapters/opencode.ts` accepts `file_paths` and `file_path`, envelope `{schema: "aislop.hook.v2", block: false, message, feedback}`
-- [ ] `hookInstall` rejects `--quality-gate` with `opencode` before any installer runs
-- [ ] Wiring: `AgentName` in registry, feedback, telemetry
-- [ ] `ALL_AGENTS`, `AGENTS_SUPPORTING_BOTH_SCOPES`, `REGISTRY`, `hookRun`, `AGENT_LABELS`, `AGENT_NAMES`, `--opencode` flag, hidden `hook opencode` command
-- [ ] Fixture `opencode-patch-event.json` copied to `tests/hooks/fixtures/`
-- [ ] Executed-plugin tests: transpile the generated source, stub `Plugin.define`, assert both hooks register, drive with fixtures and a stubbed spawn
-- [ ] Tests red-first for every row in Mechanisms marked WU-2, with a `Test` column added
-- [ ] README and `docs/commands.md`: OpenCode runtime, 2.2.4 minimum, no quality gate, shell-edit gap
-- [ ] `pnpm typecheck && pnpm test && pnpm scan` captured to `/tmp/opencode/wu2-gates.txt`
-- [ ] Independent review PASS, row in Review log
+- [x] `src/hooks/install/opencode.ts` generates `aislop.ts` with `Plugin.define`, two hooks: `tool.hook("execute.after")` and `session.hook("context")`: [evidence](../evidence/20261103-wu2-gates.md)
+- [x] Generated plugin filters `edit`, `write`, `patch` with `status === "completed"`: [evidence](../evidence/20261103-wu2-gates.md)
+- [x] Paths from `result.output.applied[].target`, else `input.path`: [evidence](../evidence/20261103-wu2-gates.md)
+- [x] Cwd from `ctx.location.directory`: [evidence](../evidence/20261103-wu2-gates.md)
+- [x] One spawn per tool call with all paths in `file_paths`: [evidence](../evidence/20261103-wu2-gates.md)
+- [x] 8 s timeout bounds the whole hook: [evidence](../evidence/20261103-wu2-gates.md)
+- [x] `stdin.on("error")` listener: [evidence](../evidence/20261103-wu2-gates.md)
+- [x] No exception escapes either hook: [evidence](../evidence/20261103-wu2-gates.md)
+- [x] Buffer keyed by `sessionID` with 10 minute expiry: [evidence](../evidence/20261103-wu2-gates.md)
+- [x] Only a non-empty trimmed message is buffered: [evidence](../evidence/20261103-wu2-gates.md)
+- [x] `context` hook appends `{role: "user", content: [{type: "text", text}]}` to `event.messages` for its own session only and deletes the entry: [evidence](../evidence/20261103-wu2-gates.md)
+- [x] Install to `.opencode/plugins/aislop.ts` (project) or `~/.config/opencode/plugins/aislop.ts` (global): [evidence](../evidence/20261103-wu2-gates.md)
+- [x] `opencode.json` untouched: [evidence](../evidence/20261103-wu2-gates.md)
+- [x] `src/hooks/adapters/opencode.ts` accepts `file_paths` and `file_path`, envelope `{schema: "aislop.hook.v2", block: false, message, feedback}`: [evidence](../evidence/20261103-wu2-gates.md)
+- [x] `hookInstall` rejects `--quality-gate` with `opencode` before any installer runs: [evidence](../evidence/20261103-wu2-gates.md)
+- [x] Wiring: `AgentName` in registry, feedback, telemetry: [evidence](../evidence/20261103-wu2-gates.md)
+- [x] `ALL_AGENTS`, `AGENTS_SUPPORTING_BOTH_SCOPES`, `REGISTRY`, `hookRun`, `AGENT_LABELS`, `AGENT_NAMES`, `--opencode` flag, hidden `hook opencode` command: [evidence](../evidence/20261103-wu2-gates.md)
+- [x] Fixture `opencode-patch-event.json` copied to `tests/hooks/fixtures/`: [evidence](../evidence/20261103-wu2-gates.md)
+- [x] Executed-plugin tests: transpile the generated source, stub `Plugin.define`, assert both hooks register, drive with fixtures and a stubbed spawn: [evidence](../evidence/20261103-wu2-gates.md)
+- [x] Tests red-first for every row in Mechanisms marked WU-2, with a `Test` column added: [evidence](../evidence/20261103-wu2-gates.md)
+- [x] README and `docs/commands.md`: OpenCode runtime, 2.2.4 minimum, no quality gate, shell-edit gap: [evidence](../evidence/20261103-wu2-gates.md)
+- [x] `pnpm typecheck && pnpm test && pnpm scan` captured to `/tmp/opencode/wu2-gates.txt`: [evidence](../evidence/20261103-wu2-gates.md)
+- [x] Independent review PASS, row in Review log: [evidence](../evidence/20261103-wu2-gates.md)
 - [ ] Commit, staged by name
 
 ### Phase 4: integration (WU-3)
@@ -155,19 +155,19 @@ Risk: LOW. Orchestrator runs existing tools. One reviewer for the cross-seam evi
 | WU-1 Stop recorded file | Stop rescans a recorded file changed outside the hook | KD-005 | claude-adapter > blocks after it rescans a recorded file with a regression |
 | WU-1 fixture guard | Each capture array's first element has an event field | `hook_event_name` or `toolName` | install-copilot > rejects a capture without an event field |
 | WU-1 shared matcher | Claude and Copilot installers share one matcher | `Edit\|Write\|MultiEdit` | install-copilot and install-claude > hook-file fixture and fresh install tests |
-| WU-2 hook registration | `setup` registers both hooks | `execute.after`, `context` | |
-| WU-2 tool filter | Only completed file tools spawn | `edit`, `write`, `patch` with `status === "completed"` | |
-| WU-2 path source | Absolute targets preferred, input path as fallback | `result.output.applied[].target`, `input.path` | |
-| WU-2 cwd | Spawn cwd is the project directory | `ctx.location.directory` | |
-| WU-2 single spawn | One child per tool call carries every path | `file_paths` array | |
-| WU-2 timeout | Whole hook bounded, child killed, no error surfaced | 8000 ms | |
-| WU-2 never throw | Spawn error, bad stdout, non-zero exit, stdin error each leave the result untouched | `try/catch` in both hooks and `stdin.on("error")` | |
-| WU-2 session buffer | Feedback reaches only its own session | `Map<sessionID>` | |
-| WU-2 buffer expiry | Stale entries are swept | 600000 ms | |
-| WU-2 non-empty message | Empty feedback is not buffered | `message.trim().length > 0` | |
-| WU-2 delivery shape | Appended message is a user text part | `{role: "user", content: [{type: "text", text}]}` | |
-| WU-2 adapter keys | Both key forms scan | `file_paths`, `file_path` | |
-| WU-2 gate rejection | `--quality-gate` with opencode exits before any write | exit 1 | |
+| WU-2 hook registration | `setup` registers both hooks | `execute.after`, `context` | install-opencode > registers hooks, scans completed file tools once, and delivers session feedback |
+| WU-2 tool filter | Only completed file tools spawn | `edit`, `write`, `patch` with `status === "completed"` | install-opencode > uses input.path, ignores other tools and errors, and isolates sessions |
+| WU-2 path source | Absolute targets preferred, input path as fallback | `result.output.applied[].target`, `input.path` | install-opencode > uses input.path, ignores other tools and errors, and isolates sessions |
+| WU-2 cwd | Spawn cwd is the project directory | `ctx.location.directory` | install-opencode > registers hooks, scans completed file tools once, and delivers session feedback |
+| WU-2 single spawn | One child per tool call carries every path | `file_paths` array | install-opencode > spawns one child for all patch targets |
+| WU-2 timeout | Whole hook bounded, child killed, no error surfaced | 8000 ms | install-opencode > contains spawn, stdin, output, and timeout failures |
+| WU-2 never throw | Spawn error, bad stdout, non-zero exit, stdin error each leave the result untouched | `try/catch` in both hooks and `stdin.on("error")` | install-opencode > contains synchronous spawn failures and leaves no pending feedback; contains frozen and throwing context messages; contains stdin EPIPE errors |
+| WU-2 session buffer | Feedback reaches only its own session | `Map<sessionID>` | install-opencode > uses input.path, ignores other tools and errors, and isolates sessions |
+| WU-2 buffer expiry | Stale entries are swept | 600000 ms | install-opencode > sweeps expired session feedback |
+| WU-2 non-empty message | Empty feedback is not buffered | `message.trim().length > 0` | install-opencode > does not buffer empty, malformed, failed, or spawn-error output |
+| WU-2 delivery shape | Appended message is a user text part | `{role: "user", content: [{type: "text", text}]}` | install-opencode > registers hooks, scans completed file tools once, and delivers session feedback |
+| WU-2 adapter keys | Both key forms scan | `file_paths`, `file_path` | opencode-adapter > scans the singular file_path payload |
+| WU-2 gate rejection | `--quality-gate` with opencode exits before any write | exit 1 | hook-command > rejects OpenCode before an installer can write |
 
 ## Gates
 
@@ -177,10 +177,10 @@ Risk: LOW. Orchestrator runs existing tools. One reviewer for the cross-seam evi
 | G2 | WU-1 `pnpm test` failures | 0 | 0 of 2427 (1 skipped): [evidence](../evidence/20261103-wu1-gates.md) | [x] |
 | G3 | WU-1 `pnpm scan` score change versus `develop` | >= 0 | 100 before, 100 after: [evidence](../evidence/20261103-wu1-gates.md) | [x] |
 | G4 | WU-1 Mechanisms rows with a reviewer-confirmed deletion-discriminating test | 14 of 14 | 14 of 14: [evidence](../evidence/20261103-wu1-gates.md) | [x] |
-| G5 | WU-2 `pnpm test` failures | 0 | | [ ] |
-| G6 | WU-2 `pnpm scan` score change versus `develop` | >= 0 | | [ ] |
-| G7 | WU-2 Mechanisms rows with a reviewer-confirmed deletion-discriminating test | 13 of 13 | | [ ] |
-| G8 | Live OpenCode delivery: model quotes feedback | yes | | [ ] |
+| G5 | WU-2 `pnpm test` failures | 0 | 0 of 2450 (1 skipped): [evidence](../evidence/20261103-wu2-gates.md) | [x] |
+| G6 | WU-2 `pnpm scan` score change versus `develop` | >= 0 | 100 before, 100 after, 0 warnings: [evidence](../evidence/20261103-wu2-gates.md) | [x] |
+| G7 | WU-2 Mechanisms rows with a reviewer-confirmed deletion-discriminating test | 13 of 13 | 13 of 13: [evidence](../evidence/20261103-wu2-gates.md) | [x] |
+| G8 | Live OpenCode delivery: model quotes feedback | yes | yes, score 73/100 quoted: [evidence](../evidence/20261103-wu2-gates.md) | [x] |
 | G9 | Live Copilot CLI: PostToolUse and Stop both fire from the generated file | yes | | [ ] |
 | G10 | Cross-seam mutations with exactly one failing test each | 4 of 4 | | [ ] |
 
@@ -198,6 +198,9 @@ their findings bind Phases 2 and 3.
 | WU-1 | 1 | BLOCK (static reviewer and exec-reviewer) | 5 | 3 | 2026-11-03 |
 | WU-1 | 2 | BLOCK (exec-reviewer) | 1 | 2 | 2026-11-03 |
 | WU-1 | 3 | PASS, orchestrator verified the three round-2 items against the reviewer's own text, user approved | 0 | 0 | 2026-11-03 |
+| WU-2 | 1 | BLOCK (exec-reviewer): 2 defects, 7 unpinned mechanisms, 3 scan warnings | 3 | 1 | 2026-11-03 |
+| WU-2 | 2 | BLOCK (exec-reviewer): 3 test gaps | 3 | 0 | 2026-11-03 |
+| WU-2 | 3 | PASS, orchestrator read the three deletion captures, user approved | 0 | 0 | 2026-11-03 |
 
 ## Carried findings
 
@@ -213,6 +216,7 @@ their findings bind Phases 2 and 3.
 | C8 | Shell-tool edits fire no file hook on any host | spikes E7, E17 | Documented gap, KD-005 |
 | C9 | Native camelCase Copilot payload unsupported | KD-004 | Documented in Phase 2 docs task |
 | C10 | Stop unit test pins the recorded file list with a stubbed scanner, not real rescan of changed content | WU-1 round 2 | Phase 4 live Copilot check |
+| C12 | OpenCode resident server does not reload a newly installed project plugin; a fresh process is needed | WU-2 live check | Documented in Phase 3 docs task |
 | C11 | README and docs/commands.md STE scores 2.67 and 3.14, above the 2.5 flavored target, from pre-existing text | WU-1 worker | Not in scope, upstream prose |
 
 ## Related

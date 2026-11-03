@@ -217,3 +217,31 @@ describe("resolveAgents", () => {
 		expect(resolveAgents({}, ["claude"], "gemini", [])).toEqual(["claude"]);
 	});
 });
+
+describe("OpenCode quality gate", () => {
+	it("rejects OpenCode before an installer can write", async () => {
+		const { hookInstall } = await import("../../src/commands/hook.js");
+		const home = tempDir();
+		const cwd = tempDir();
+		const stderr = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+		vi.spyOn(os, "homedir").mockReturnValue(home);
+		vi.spyOn(process, "cwd").mockReturnValue(cwd);
+		const originalExitCode = process.exitCode;
+		process.exitCode = undefined;
+		try {
+			await hookInstall({
+				agents: ["opencode"],
+				scope: "project",
+				dryRun: false,
+				yes: true,
+				qualityGate: true,
+			});
+			expect(process.exitCode).toBe(1);
+			expect(stderr).toHaveBeenCalledWith(expect.stringContaining("not available for OpenCode"));
+			expect(fs.existsSync(path.join(cwd, ".opencode", "plugins", "aislop.ts"))).toBe(false);
+		} finally {
+			process.exitCode = originalExitCode;
+			stderr.mockRestore();
+		}
+	});
+});

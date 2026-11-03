@@ -55,7 +55,7 @@ interface BaselineSnapshot {
 	findingFingerprints: string[];
 }
 
-type AgentName = "claude" | "cursor" | "gemini" | "pi";
+type AgentName = "claude" | "cursor" | "gemini" | "pi" | "opencode";
 
 interface FeedbackMeta {
 	agent?: AgentName;
