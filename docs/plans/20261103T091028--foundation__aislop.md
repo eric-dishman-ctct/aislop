@@ -4,7 +4,7 @@ title: "Foundation: runtime hooks for Copilot and OpenCode"
 summary: "Adopt the docs system and add per-edit runtime hook adapters for the Copilot shared harness and OpenCode v2"
 status: in-progress
 created: 2026-11-03T09:10:28
-updated: 2026-11-03T09:14:41
+updated: 2026-11-03T09:21:42
 tags: ["aislop", "hooks", "copilot", "opencode"]
 ---
 
@@ -12,8 +12,7 @@ tags: ["aislop", "hooks", "copilot", "opencode"]
 
 ## Status
 
-Documentation system adopted on branch `feat/copilot-opencode-hooks`. Phase 1 complete
-except its commit. Phase 2 (Copilot) not started.
+Documentation system adopted on branch `feat/copilot-opencode-hooks`. Phase 1 complete at 674636a. Phase 2 (Copilot) not started.
 
 ## Context
 
@@ -56,7 +55,7 @@ Risk: LOW. No code. Reviewed by the audit script and the user.
 - [x] KD-003 review rule: [KD-003](../decisions/20261103T090903--adopt-review-rule__aislop.md)
 - [x] KD-004 and KD-005 design decisions: [KD-004](../decisions/20261103T090950--copilot-reuses-claude-adapter__aislop.md)
 - [x] Index `docs/README.md` generated with `make-index.sh`: [docs/README.md](../README.md)
-- [ ] Phase 1 commit on `feat/copilot-opencode-hooks`
+- [x] Phase 1 commit on `feat/copilot-opencode-hooks`: 674636a
 
 ### Phase 2: Copilot runtime hook (WU-1)
 
