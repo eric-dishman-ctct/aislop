@@ -17,6 +17,7 @@ interface ClaudeHookStdin {
 	tool_name?: string;
 	tool_input?: {
 		file_path?: string;
+		path?: string;
 		edits?: { file_path?: string }[];
 	};
 	cwd?: string;
@@ -32,11 +33,14 @@ interface ClaudeHookOutput {
 	};
 }
 
-const extractFiles = (stdin: ClaudeHookStdin): string[] => {
+export const extractFiles = (stdin: ClaudeHookStdin): string[] => {
 	const files = new Set<string>();
 	const input = stdin.tool_input ?? {};
 	if (typeof input.file_path === "string" && input.file_path.length > 0) {
 		files.add(input.file_path);
+	}
+	if (typeof input.path === "string" && input.path.length > 0) {
+		files.add(input.path);
 	}
 	if (Array.isArray(input.edits)) {
 		for (const e of input.edits) {
@@ -81,11 +85,16 @@ export const renderClaudeOutput = (
 	return out;
 };
 
-export const runClaudeHook = async (
-	deps: { stdin?: () => Promise<string>; write?: (s: string) => void } = {},
-): Promise<number> => {
+interface ClaudeHookDeps {
+	stdin?: () => Promise<string>;
+	write?: (s: string) => void;
+	scan?: typeof runScopedScan;
+}
+
+export const runClaudeHook = async (deps: ClaudeHookDeps = {}): Promise<number> => {
 	const getStdin = deps.stdin ?? readStdin;
 	const write = deps.write ?? ((s: string) => process.stdout.write(s));
+	const scan = deps.scan ?? runScopedScan;
 
 	const raw = await getStdin();
 	const input = parseClaudeStdin(raw);
@@ -98,7 +107,7 @@ export const runClaudeHook = async (
 	if (!release) return 0;
 
 	try {
-		const { diagnostics, score, rootDirectory } = await runScopedScan(cwd, files);
+		const { diagnostics, score, rootDirectory } = await scan(cwd, files);
 		const baseline = readBaseline(cwd);
 		appendSessionFiles(cwd, files);
 		const feedback = buildFeedback(
@@ -194,11 +203,10 @@ export const parseClaudeStopStdin = (raw: string): ClaudeStopStdin => {
 	}
 };
 
-export const runClaudeStopHook = async (
-	deps: { stdin?: () => Promise<string>; write?: (s: string) => void } = {},
-): Promise<number> => {
+export const runClaudeStopHook = async (deps: ClaudeHookDeps = {}): Promise<number> => {
 	const getStdin = deps.stdin ?? readStdin;
 	const write = deps.write ?? ((s: string) => process.stdout.write(s));
+	const scan = deps.scan ?? runScopedScan;
 
 	const raw = await getStdin();
 	const input = parseClaudeStopStdin(raw);
@@ -217,7 +225,7 @@ export const runClaudeStopHook = async (
 	const release = acquireHookLock(cwd);
 	if (!release) return 0;
 	try {
-		const { diagnostics, score, rootDirectory } = await runScopedScan(cwd, sessionFiles);
+		const { diagnostics, score, rootDirectory } = await scan(cwd, sessionFiles);
 		const feedback = buildFeedback(
 			diagnostics,
 			score,

@@ -126,6 +126,17 @@ describe("detectAislopHooks", () => {
 		expect(detectAislopHooks({ home, cwd })).not.toContain("claude");
 	});
 
+	it("detects a Copilot hook installed in the project scope", () => {
+		const target = REGISTRY.copilot.paths({ home, cwd, scope: "project" })[0];
+		fs.mkdirSync(path.dirname(target), { recursive: true });
+		fs.writeFileSync(
+			target,
+			JSON.stringify({ hooks: { PostToolUse: [{ hooks: [{ __aislop: { v: 1 } }] }] } }),
+		);
+		expect(detectInstalledAgents({ home, cwd })).toContain("copilot");
+		expect(detectAislopHooks({ home, cwd })).toContain("copilot");
+	});
+
 	it("detects a hook installed in the project scope", () => {
 		const target = REGISTRY.claude.paths({ home, cwd, scope: "project" })[0];
 		fs.mkdirSync(path.dirname(target), { recursive: true });

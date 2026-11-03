@@ -1,5 +1,4 @@
 import fs from "node:fs";
-import path from "node:path";
 import {
 	installAntigravity,
 	resolveAntigravityPaths,
@@ -41,19 +40,14 @@ export const ALL_AGENTS: AgentName[] = [
 	"copilot",
 ];
 
-export const AGENTS_PROJECT_ONLY: AgentName[] = [
-	"windsurf",
-	"cline",
-	"kilocode",
-	"antigravity",
-	"copilot",
-];
+export const AGENTS_PROJECT_ONLY: AgentName[] = ["windsurf", "cline", "kilocode", "antigravity"];
 export const AGENTS_SUPPORTING_BOTH_SCOPES: AgentName[] = [
 	"claude",
 	"cursor",
 	"gemini",
 	"pi",
 	"codex",
+	"copilot",
 ];
 
 interface AgentEntry {
@@ -84,7 +78,10 @@ const paths = {
 	],
 	kilocode: (opts: HookInstallOpts): string[] => [resolveKilocodePaths(opts).rules],
 	antigravity: (opts: HookInstallOpts): string[] => [resolveAntigravityPaths(opts).rules],
-	copilot: (opts: HookInstallOpts): string[] => [resolveCopilotPaths(opts).rules],
+	copilot: (opts: HookInstallOpts): string[] => {
+		const p = resolveCopilotPaths(opts);
+		return opts.scope === "project" ? [p.hookFile, p.instructionsFile] : [p.hookFile];
+	},
 };
 
 export const REGISTRY: Record<AgentName, AgentEntry> = {
@@ -110,13 +107,15 @@ export const defaultScopeFor = (agent: AgentName): "global" | "project" =>
 export const detectInstalledAgents = (opts: { home: string; cwd: string }): AgentName[] => {
 	const hits: AgentName[] = [];
 	for (const agent of ALL_AGENTS) {
-		const scope = defaultScopeFor(agent);
-		const targets = REGISTRY[agent].paths({
-			home: opts.home,
-			cwd: opts.cwd,
-			scope,
-		});
-		if (targets.some((p) => fs.existsSync(p))) hits.push(agent);
+		if (
+			detectionScopes(agent).some((scope) =>
+				REGISTRY[agent]
+					.paths({ home: opts.home, cwd: opts.cwd, scope })
+					.some((target) => fs.existsSync(target)),
+			)
+		) {
+			hits.push(agent);
+		}
 	}
 	return hits;
 };
@@ -126,7 +125,6 @@ const AISLOP_MARKERS = ["__aislop", "aislop:begin", "@AISLOP.md"];
 const hasAislopHook = (target: string): boolean => {
 	try {
 		if (!fs.statSync(target).isFile()) return false;
-		if (path.basename(target).toLowerCase().startsWith("aislop")) return true;
 		const content = fs.readFileSync(target, "utf8");
 		return AISLOP_MARKERS.some((marker) => content.includes(marker));
 	} catch {
@@ -136,6 +134,11 @@ const hasAislopHook = (target: string): boolean => {
 
 const detectionScopes = (agent: AgentName): Array<"global" | "project"> =>
 	AGENTS_SUPPORTING_BOTH_SCOPES.includes(agent) ? ["global", "project"] : [defaultScopeFor(agent)];
+
+export const scopeHasManagedMarker = (
+	agent: AgentName,
+	opts: { home: string; cwd: string; scope: "global" | "project" },
+): boolean => REGISTRY[agent].paths(opts).some(hasAislopHook);
 
 export const detectAislopHooks = (opts: { home: string; cwd: string }): AgentName[] =>
 	ALL_AGENTS.filter((agent) =>

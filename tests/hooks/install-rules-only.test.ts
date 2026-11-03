@@ -77,9 +77,10 @@ describe("P3 project-only installers", () => {
 
 	it("Copilot writes .github/copilot-instructions.md", () => {
 		const result = installCopilot({ home, cwd, scope: "project" });
-		const p = resolveCopilotPaths({ home, cwd, scope: "project" }).rules;
-		expect(fs.existsSync(p)).toBe(true);
-		expect(result.wrote).toContain(p);
+		const p = resolveCopilotPaths({ home, cwd, scope: "project" });
+		expect(fs.existsSync(p.hookFile)).toBe(true);
+		expect(fs.existsSync(p.instructionsFile)).toBe(true);
+		expect(result.wrote).toContain(p.hookFile);
 	});
 });
 
@@ -126,7 +127,9 @@ describe("rules-only uninstall reversibility", () => {
 		const opts = { home, cwd, scope: "project" as const };
 		installCopilot(opts);
 		uninstallCopilot(opts);
-		expect(fs.existsSync(resolveCopilotPaths(opts).rules)).toBe(false);
+		const paths = resolveCopilotPaths(opts);
+		expect(fs.existsSync(paths.hookFile)).toBe(false);
+		expect(fs.existsSync(paths.instructionsFile)).toBe(false);
 	});
 
 	it("installers are idempotent — second run writes nothing", () => {

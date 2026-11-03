@@ -14,6 +14,15 @@ interface MarkdownFenceResult {
 const renderFence = (body: string, hash: string): string =>
 	[`<!-- aislop:begin v1 hash=${hash} -->`, body.trimEnd(), "<!-- aislop:end v1 -->"].join("\n");
 
+export const removeMarkdownFence = (content: string): string => {
+	const begin = content.match(BEGIN_RE);
+	const end = content.match(END_RE);
+	if (!begin || !end || (end.index ?? 0) <= (begin.index ?? 0)) return content;
+	const before = content.slice(0, begin.index);
+	const after = content.slice((end.index ?? 0) + end[0].length);
+	return `${before}${after}`;
+};
+
 export const upsertMarkdownFence = (
 	existing: string | null,
 	body: string,

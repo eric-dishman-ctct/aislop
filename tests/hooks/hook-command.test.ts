@@ -1,5 +1,140 @@
-import { describe, expect, it } from "vitest";
-import { defaultInstallTargets, parseAgentFlag, resolveAgents } from "../../src/commands/hook.js";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { Command } from "commander";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { registerHookCommand } from "../../src/cli/hook-command.js";
+import {
+	AGENT_LABELS,
+	defaultInstallTargets,
+	hookUninstall,
+	parseAgentFlag,
+	resolveAgents,
+} from "../../src/commands/hook.js";
+import { installClaude, resolveClaudePaths } from "../../src/hooks/install/claude.js";
+
+const tempDirs: string[] = [];
+const tempDir = (): string => {
+	const dir = fs.mkdtempSync(path.join(os.tmpdir(), "aislop-uninstall-"));
+	tempDirs.push(dir);
+	return dir;
+};
+
+afterEach(() => {
+	vi.restoreAllMocks();
+	for (const dir of tempDirs.splice(0)) fs.rmSync(dir, { recursive: true, force: true });
+});
+
+const uninstallFlags = (explicitScope = false, scope: "global" | "project" = "global") => ({
+	agents: ["claude" as const],
+	scope,
+	dryRun: false,
+	yes: true,
+	qualityGate: false,
+	explicitScope,
+});
+
+const captureUninstall = async (flags = uninstallFlags()): Promise<string> => {
+	const output = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+	await hookUninstall(flags);
+	return output.mock.calls.map(([text]) => String(text)).join("");
+};
+
+const installManagedClaude = (home: string, cwd: string, scope: "global" | "project"): void => {
+	installClaude({ home, cwd, scope, qualityGate: false });
+};
+
+describe("hook uninstall scope markers", () => {
+	it("keeps unmanaged project Claude files when no scope flag is set", async () => {
+		const home = tempDir();
+		const cwd = tempDir();
+		installManagedClaude(home, cwd, "global");
+		const project = resolveClaudePaths({ home, cwd, scope: "project", qualityGate: false });
+		fs.mkdirSync(path.dirname(project.settings), { recursive: true });
+		const unmanagedRules = "# Project rules\nKeep this.\n";
+		const foreignSettings = '{"hooks":{"PostToolUse":[{"hooks":[{"command":"foreign"}]}]}}\n';
+		fs.writeFileSync(project.aislopMd, unmanagedRules);
+		fs.writeFileSync(project.settings, foreignSettings);
+		const oldHome = process.env.HOME;
+		const oldCwd = process.cwd();
+		process.env.HOME = home;
+		process.chdir(cwd);
+		try {
+			const output = await captureUninstall();
+			expect(fs.readFileSync(project.aislopMd, "utf8")).toBe(unmanagedRules);
+			expect(fs.readFileSync(project.settings, "utf8")).toBe(foreignSettings);
+			expect(fs.existsSync(resolveClaudePaths({ home, cwd, scope: "global", qualityGate: false }).settings)).toBe(false);
+			expect((output.match(/Scope/g) ?? [])).toHaveLength(1);
+		} finally {
+			process.chdir(oldCwd);
+			process.env.HOME = oldHome;
+		}
+	});
+
+	it("removes both managed Claude scopes without a scope flag", async () => {
+		const home = tempDir();
+		const cwd = tempDir();
+		installManagedClaude(home, cwd, "global");
+		installManagedClaude(home, cwd, "project");
+		const oldHome = process.env.HOME;
+		const oldCwd = process.cwd();
+		process.env.HOME = home;
+		process.chdir(cwd);
+		try {
+			const output = await captureUninstall();
+			expect((output.match(/Scope/g) ?? [])).toHaveLength(2);
+			expect(fs.existsSync(resolveClaudePaths({ home, cwd, scope: "global", qualityGate: false }).settings)).toBe(false);
+			expect(fs.existsSync(resolveClaudePaths({ home, cwd, scope: "project", qualityGate: false }).settings)).toBe(false);
+		} finally {
+			process.chdir(oldCwd);
+			process.env.HOME = oldHome;
+		}
+	});
+
+	it("removes only the project Claude scope with --project", async () => {
+		const home = tempDir();
+		const cwd = tempDir();
+		installManagedClaude(home, cwd, "global");
+		installManagedClaude(home, cwd, "project");
+		const oldHome = process.env.HOME;
+		const oldCwd = process.cwd();
+		process.env.HOME = home;
+		process.chdir(cwd);
+		try {
+			const output = await captureUninstall(uninstallFlags(true, "project"));
+			expect((output.match(/Scope/g) ?? [])).toHaveLength(1);
+			expect(fs.existsSync(resolveClaudePaths({ home, cwd, scope: "project", qualityGate: false }).settings)).toBe(false);
+			expect(fs.existsSync(resolveClaudePaths({ home, cwd, scope: "global", qualityGate: false }).settings)).toBe(true);
+		} finally {
+			process.chdir(oldCwd);
+			process.env.HOME = oldHome;
+		}
+	});
+});
+
+describe("hook uninstall options", () => {
+	it("parses --yes as a no-op with a dry run", async () => {
+		const program = new Command();
+		registerHookCommand(program);
+		const hook = program.commands.find((command) => command.name() === "hook");
+		const uninstall = hook?.commands.find((command) => command.name() === "uninstall");
+		let options: { yes?: boolean; dryRun?: boolean } | undefined;
+		uninstall?.action((_agents, parsed) => {
+			options = parsed as { yes?: boolean; dryRun?: boolean };
+		});
+
+		await program.parseAsync(["hook", "uninstall", "--claude", "--yes", "--dry-run"], {
+			from: "user",
+		});
+		expect(options).toMatchObject({ yes: true, dryRun: true, claude: true });
+	});
+});
+
+describe("agent selection labels", () => {
+	it("describes Copilot as a runtime hook", () => {
+		expect(AGENT_LABELS.copilot.hint).not.toContain("rules-only");
+	});
+});
 
 describe("parseAgentFlag", () => {
 	it("returns the fallback when no arg is provided", () => {
@@ -36,7 +171,7 @@ describe("defaultInstallTargets", () => {
 		expect(targets).toContain("gemini");
 		expect(targets).toContain("codex");
 		expect(targets).not.toContain("windsurf");
-		expect(targets).not.toContain("copilot");
+		expect(targets).toContain("copilot");
 	});
 });
 

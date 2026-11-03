@@ -1,0 +1,52 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash '/tmp/opencode/aislop-spikes/s1/tee-hook.sh' PostToolUse",
+            "__aislop": {
+              "v": 1,
+              "managed": true,
+              "hash": "sha256:76c5d8b7bfc1fd04c7b17dd5bf5c1d51"
+            }
+          }
+        ]
+      }
+    ],
+    "FileChanged": [
+      {
+        "matcher": ".aislop/config.yml|.aislop/config.yaml|.aislop/rules.yml|.aislop/rules.yaml|package.json",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash '/tmp/opencode/aislop-spikes/s1/tee-hook.sh' FileChanged",
+            "__aislop": {
+              "v": 1,
+              "managed": true,
+              "hash": "sha256:4e41d7098e40754335fd4b10245993a3"
+            }
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash '/tmp/opencode/aislop-spikes/s1/tee-hook.sh' Stop --stop",
+            "__aislop": {
+              "v": 1,
+              "managed": true,
+              "hash": "sha256:b8be6db412bcec6c1df3fd94b7835e1a"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

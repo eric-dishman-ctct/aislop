@@ -108,6 +108,7 @@ type UninstallOpts = AgentFlagOpts & {
 	global?: boolean;
 	project?: boolean;
 	dryRun?: boolean;
+	yes?: boolean;
 };
 
 const addAgentShortcutOptions = (command: Command): Command => {
@@ -128,7 +129,7 @@ const addInstallOptions = (command: Command): Command =>
 			.option("--yes", "skip the confirmation prompt (reserved)")
 			.option(
 				"--quality-gate",
-				"add a Stop hook that blocks when score regresses below baseline (Claude only)",
+				"add a Stop hook that blocks when the score regresses below the baseline (Claude and Copilot). The gate rescans files recorded from Edit, Write, and MultiEdit calls. It does not see shell edits to unrecorded files. Records persist across sessions until a Stop with no regression clears them.",
 			),
 	);
 
@@ -138,7 +139,8 @@ const addUninstallOptions = (command: Command): Command =>
 			.option("--agent <names>", "comma-separated agent list")
 			.option("-g, --global", "uninstall from user-scope config")
 			.option("--project", "uninstall from project-scope config")
-			.option("--dry-run", "print the planned removal without writing"),
+			.option("--dry-run", "print the planned removal without writing")
+			.option("--yes", "skip the confirmation prompt (reserved)"),
 	);
 
 const runInstallAction = async (positional: string[], opts: InstallOpts): Promise<void> => {
@@ -153,6 +155,7 @@ const runInstallAction = async (positional: string[], opts: InstallOpts): Promis
 				dryRun: Boolean(opts.dryRun),
 				yes: Boolean(opts.yes),
 				qualityGate: Boolean(opts.qualityGate),
+				explicitScope: Boolean(opts.global || opts.project),
 			});
 			return { exitCode: 0 };
 		},
@@ -171,6 +174,7 @@ const runUninstallAction = async (positional: string[], opts: UninstallOpts): Pr
 				dryRun: Boolean(opts.dryRun),
 				yes: true,
 				qualityGate: false,
+				explicitScope: Boolean(opts.global || opts.project),
 			});
 			return { exitCode: 0 };
 		},

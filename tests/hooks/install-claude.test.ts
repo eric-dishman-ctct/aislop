@@ -193,6 +193,14 @@ describe("uninstallClaude", () => {
 		expect(after.hooks.PostToolUse[0].matcher).toBe("Bash");
 	});
 
+	it("keeps an unmanaged AISLOP.md", () => {
+		const paths = resolveClaudePaths(globalOpts());
+		fs.mkdirSync(path.dirname(paths.aislopMd), { recursive: true });
+		fs.writeFileSync(paths.aislopMd, "# User rules\n");
+		uninstallClaude(globalOpts());
+		expect(fs.readFileSync(paths.aislopMd, "utf8")).toBe("# User rules\n");
+	});
+
 	it("removes @AISLOP.md from CLAUDE.md while preserving user content", () => {
 		const paths = resolveClaudePaths(globalOpts());
 		fs.mkdirSync(path.dirname(paths.claudeMd), { recursive: true });

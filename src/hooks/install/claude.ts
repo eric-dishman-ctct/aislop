@@ -29,7 +29,7 @@ export const resolveClaudePaths = (opts: HookInstallOpts): ClaudePaths => {
 	};
 };
 
-const buildHookGroup = () => {
+export const buildHookGroup = () => {
 	const hashBody = JSON.stringify({
 		command: "aislop hook claude",
 		matcher: "Edit|Write|MultiEdit",
@@ -50,7 +50,7 @@ const buildHookGroup = () => {
 	};
 };
 
-const buildStopHookGroup = () => {
+export const buildStopHookGroup = () => {
 	const hashBody = JSON.stringify({ command: "aislop hook claude --stop" });
 	return {
 		matcher: "",
@@ -179,7 +179,7 @@ export const uninstallClaude = (
 	}
 
 	const existingMd = readIfExists(paths.aislopMd);
-	if (existingMd != null) {
+	if (existingMd?.includes("<!-- aislop:begin")) {
 		applyRemoval(result, opts, paths.aislopMd, null);
 	} else {
 		result.skipped.push(paths.aislopMd);

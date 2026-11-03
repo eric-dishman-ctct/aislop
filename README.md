@@ -273,6 +273,7 @@ aislop hook install --claude           # Claude Code
 aislop hook install --cursor           # Cursor
 aislop hook install --gemini           # Gemini CLI
 aislop hook install --pi               # pi
+aislop hook install --copilot --project # GitHub Copilot
 aislop hook install                    # pick agents interactively
 aislop hook install claude cursor      # specific agents
 aislop hook install --agent claude,pi  # comma-separated agents
@@ -280,8 +281,12 @@ aislop install claude cursor           # alias for hook install
 aislop install hooks --claude          # natural alias for hook install
 ```
 
-**Runtime adapters** (scan + feedback): `claude`, `cursor`, `gemini`, `pi`.  
-**Rules-only** (agent reads rules): `codex`, `windsurf`, `cline`, `kilocode`, `antigravity`, `copilot`.
+**Runtime adapters** (scan + feedback): `claude`, `cursor`, `gemini`, `pi`, `copilot`.
+**Rules-only** (agent reads rules): `codex`, `windsurf`, `cline`, `kilocode`, `antigravity`.
+
+| Agent | Hook support | Requirements and limits |
+|---|---|---|
+| GitHub Copilot | Runtime hook, Preview | Requires VS Code 1.144.0 or later, or Copilot CLI 1.0.105 or later. Trust the folder with `--trust-folder` or `trustedFolders` before hooks run. Run `aislop hook baseline` before `--quality-gate`. The gate rescans files recorded from Edit, Write, and MultiEdit calls. It does not see shell edits to unrecorded files. Records persist across sessions until a Stop with no regression clears them. Native camelCase payloads are unsupported. Copilot scans report `claude` telemetry. |
 
 Hook install flags: `--agent <names>`, `-g, --global`, `--project`, `--dry-run`, `--yes`, `--quality-gate`, plus per-agent shortcuts `--claude`, `--cursor`, `--gemini`, `--pi`, `--codex`, `--windsurf`, `--cline`, `--kilocode`, `--antigravity`, `--copilot`.
 
@@ -289,6 +294,7 @@ Hook install flags: `--agent <names>`, `-g, --global`, `--project`, `--dry-run`,
 
 ```bash
 aislop hook install --claude --quality-gate
+aislop hook install --copilot --project --quality-gate
 aislop hook baseline                    # re-capture baseline
 aislop hook status                      # list installed
 aislop hook uninstall --claude          # remove

@@ -1,0 +1,11 @@
+[
+  {
+    "hook_event_name": "Stop",
+    "session_id": "6368dcff-b2a5-480f-bfb2-d1b5341db29c",
+    "timestamp": "2026-10-30T22:14:39.291Z",
+    "cwd": "/tmp/opencode/aislop-spikes/s1/repo",
+    "transcript_path": "/home/u_dishmej/.copilot/session-state/6368dcff-b2a5-480f-bfb2-d1b5341db29c/events.jsonl",
+    "stop_reason": "end_turn",
+    "stop_hook_active": false
+  }
+]

@@ -4,7 +4,7 @@ title: "Foundation: runtime hooks for Copilot and OpenCode"
 summary: "Adopt the docs system and add per-edit runtime hook adapters for the Copilot shared harness and OpenCode v2"
 status: in-progress
 created: 2026-11-03T09:10:28
-updated: 2026-11-03T09:21:42
+updated: 2026-11-03T09:56:11
 tags: ["aislop", "hooks", "copilot", "opencode"]
 ---
 
@@ -12,7 +12,7 @@ tags: ["aislop", "hooks", "copilot", "opencode"]
 
 ## Status
 
-Documentation system adopted on branch `feat/copilot-opencode-hooks`. Phase 1 complete at 674636a. Phase 2 (Copilot) not started.
+Documentation system adopted on branch `feat/copilot-opencode-hooks`. Phase 1 complete at 674636a. Phase 2 (Copilot) reviewed, PASS at round 3, commit pending. Phase 3 not started.
 
 ## Context
 
@@ -64,25 +64,25 @@ disables feedback, a false block stops the agent, or an uninstall deletes user t
 Brief: delivered in-prompt by the orchestrator. It names this plan, KD-004, KD-005, the
 carried findings C1, C2, C3, C5, and the fixture sources.
 
-- [ ] `extractFiles` in `src/hooks/adapters/claude.ts` accepts `tool_input.path`
-- [ ] `buildHookGroup` and `buildStopHookGroup` exported from `src/hooks/install/claude.ts`
-- [ ] `src/hooks/install/copilot.ts` writes `.github/hooks/aislop.json` (project) or `$COPILOT_HOME/hooks/aislop.json` (global), nested group shape, no `version` key, Stop group only with `qualityGate`
-- [ ] Project install keeps the fenced block in `.github/copilot-instructions.md`
-- [ ] Global install touches no project file
-- [ ] `removeMarkdownFence` in `src/hooks/io/sentinel.ts`
-- [ ] Copilot uninstall removes only aislop entries and the fence
-- [ ] No-flag uninstall of a both-scope agent removes a scope only when that scope holds an aislop-managed marker
-- [ ] `uninstallClaude` keeps an `AISLOP.md` that lacks the fence
-- [ ] Registry: copilot in `AGENTS_SUPPORTING_BOTH_SCOPES`
-- [ ] `detectInstalledAgents` checks every detection scope
-- [ ] `resolveOpts` no longer coerces copilot to project
-- [ ] `hook status` lists paths for every detection scope
-- [ ] `--quality-gate` help text per KD-005
-- [ ] Fixtures copied to `tests/hooks/fixtures/`: `copilot-A-PostToolUse.json`, `copilot-E-postToolUse.json`, `copilot-A-regression-Stop.json`, `copilot-B-hookfile.json`, with a guard test that each capture array's `[0]` has an event field
-- [ ] Tests red-first for every row in Mechanisms marked WU-1, with a `Test` column added
-- [ ] README integration table and `docs/commands.md`: Copilot runtime, Preview status, minimum versions, trust-folder step, baseline step, KD-005 limits
-- [ ] `pnpm typecheck && pnpm test && pnpm scan` captured to `/tmp/opencode/wu1-gates.txt`
-- [ ] Independent review PASS, row in Review log
+- [x] `extractFiles` in `src/hooks/adapters/claude.ts` accepts `tool_input.path`: [evidence](../evidence/20261103-wu1-gates.md)
+- [x] `buildHookGroup` and `buildStopHookGroup` exported from `src/hooks/install/claude.ts`: [evidence](../evidence/20261103-wu1-gates.md)
+- [x] `src/hooks/install/copilot.ts` writes `.github/hooks/aislop.json` (project) or `$COPILOT_HOME/hooks/aislop.json` (global), nested group shape, no `version` key, Stop group only with `qualityGate`: [evidence](../evidence/20261103-wu1-gates.md)
+- [x] Project install keeps the fenced block in `.github/copilot-instructions.md`: [evidence](../evidence/20261103-wu1-gates.md)
+- [x] Global install touches no project file: [evidence](../evidence/20261103-wu1-gates.md)
+- [x] `removeMarkdownFence` in `src/hooks/io/sentinel.ts`: [evidence](../evidence/20261103-wu1-gates.md)
+- [x] Copilot uninstall removes only aislop entries and the fence: [evidence](../evidence/20261103-wu1-gates.md)
+- [x] No-flag uninstall of a both-scope agent removes a scope only when that scope holds an aislop-managed marker: [evidence](../evidence/20261103-wu1-gates.md)
+- [x] `uninstallClaude` keeps an `AISLOP.md` that lacks the fence: [evidence](../evidence/20261103-wu1-gates.md)
+- [x] Registry: copilot in `AGENTS_SUPPORTING_BOTH_SCOPES`: [evidence](../evidence/20261103-wu1-gates.md)
+- [x] `detectInstalledAgents` checks every detection scope: [evidence](../evidence/20261103-wu1-gates.md)
+- [x] `resolveOpts` no longer coerces copilot to project: [evidence](../evidence/20261103-wu1-gates.md)
+- [x] `hook status` lists paths for every detection scope: [evidence](../evidence/20261103-wu1-gates.md)
+- [x] `--quality-gate` help text per KD-005: [evidence](../evidence/20261103-wu1-gates.md)
+- [x] Fixtures copied to `tests/hooks/fixtures/`: `copilot-A-PostToolUse.json`, `copilot-E-postToolUse.json`, `copilot-A-regression-Stop.json`, `copilot-B-hookfile.json`, with a guard test that each capture array's `[0]` has an event field: [evidence](../evidence/20261103-wu1-gates.md)
+- [x] Tests red-first for every row in Mechanisms marked WU-1, with a `Test` column added: [evidence](../evidence/20261103-wu1-gates.md)
+- [x] README integration table and `docs/commands.md`: Copilot runtime, Preview status, minimum versions, trust-folder step, baseline step, KD-005 limits: [evidence](../evidence/20261103-wu1-gates.md)
+- [x] `pnpm typecheck && pnpm test && pnpm scan` captured to `/tmp/opencode/wu1-gates.txt`: [evidence](../evidence/20261103-wu1-gates.md)
+- [x] Independent review PASS, row in Review log: [evidence](../evidence/20261103-wu1-gates.md)
 - [ ] Commit, staged by name
 
 ### Phase 3: OpenCode runtime hook (WU-2)
@@ -139,44 +139,44 @@ Risk: LOW. Orchestrator runs existing tools. One reviewer for the cross-seam evi
 
 ## Mechanisms
 
-| Mechanism | Property that must hold | Literal value |
-| --- | --- | --- |
-| WU-1 `extractFiles` path key | A Copilot PostToolUse payload yields its one file | `tool_input.path`, after `file_path`, before `edits[]` |
-| WU-1 camelCase rejection | A native camelCase payload yields no files and no output | `toolArgs.path` ignored |
-| WU-1 Copilot hook file | Generated project file equals the Copilot-accepted fixture after fixture-only command normalization | `copilot-B-hookfile.json`, no `version` key |
-| WU-1 Stop group condition | Stop group present only with the gate flag | `qualityGate === true` |
-| WU-1 repeat install | One aislop group per event after two installs | `upsertHookGroup` |
-| WU-1 fence removal | Uninstall keeps user text outside the fence | `removeMarkdownFence` |
-| WU-1 foreign entries | Uninstall keeps hook groups without the sentinel | `__aislop` absent |
-| WU-1 managed-marker uninstall | No-flag uninstall touches a scope only when it holds a sentinel or fence | unmanaged `AISLOP.md` survives |
-| WU-1 global scope isolation | Global install writes nothing under the project | `$COPILOT_HOME/hooks/aislop.json` only |
-| WU-1 both-scope detection | A project-only install is detected and uninstalled | `detectInstalledAgents` |
-| WU-1 Stop empty list | Stop with no recorded files returns no decision | KD-005 |
-| WU-1 Stop recorded file | Stop rescans a recorded file changed outside the hook | KD-005 |
-| WU-1 fixture guard | Each capture array's first element has an event field | `hook_event_name` or `toolName` |
-| WU-1 shared matcher | Claude and Copilot installers share one matcher | `Edit\|Write\|MultiEdit` |
-| WU-2 hook registration | `setup` registers both hooks | `execute.after`, `context` |
-| WU-2 tool filter | Only completed file tools spawn | `edit`, `write`, `patch` with `status === "completed"` |
-| WU-2 path source | Absolute targets preferred, input path as fallback | `result.output.applied[].target`, `input.path` |
-| WU-2 cwd | Spawn cwd is the project directory | `ctx.location.directory` |
-| WU-2 single spawn | One child per tool call carries every path | `file_paths` array |
-| WU-2 timeout | Whole hook bounded, child killed, no error surfaced | 8000 ms |
-| WU-2 never throw | Spawn error, bad stdout, non-zero exit, stdin error each leave the result untouched | `try/catch` in both hooks and `stdin.on("error")` |
-| WU-2 session buffer | Feedback reaches only its own session | `Map<sessionID>` |
-| WU-2 buffer expiry | Stale entries are swept | 600000 ms |
-| WU-2 non-empty message | Empty feedback is not buffered | `message.trim().length > 0` |
-| WU-2 delivery shape | Appended message is a user text part | `{role: "user", content: [{type: "text", text}]}` |
-| WU-2 adapter keys | Both key forms scan | `file_paths`, `file_path` |
-| WU-2 gate rejection | `--quality-gate` with opencode exits before any write | exit 1 |
+| Mechanism | Property that must hold | Literal value | Test |
+| --- | --- | --- | --- |
+| WU-1 `extractFiles` path key | A Copilot PostToolUse payload yields its one file | `tool_input.path`, after `file_path`, before `edits[]` | claude-adapter > parses the Copilot snake_case path payload |
+| WU-1 camelCase rejection | A native camelCase payload yields no files and no output | `toolArgs.path` ignored | claude-adapter > does not scan or write for the native camelCase Copilot capture |
+| WU-1 Copilot hook file | Generated project file equals the Copilot-accepted fixture after fixture-only command normalization | `copilot-B-hookfile.json`, no `version` key | install-copilot > matches the accepted hook-file groups without a version or FileChanged group |
+| WU-1 Stop group condition | Stop group present only with the gate flag | `qualityGate === true` | install-copilot > adds Stop only when qualityGate is true and remains idempotent |
+| WU-1 repeat install | One aislop group per event after two installs | `upsertHookGroup` | install-copilot > adds Stop only when qualityGate is true and remains idempotent |
+| WU-1 fence removal | Uninstall keeps user text outside the fence | `removeMarkdownFence` | install-copilot > removes only managed groups and the managed instruction fence |
+| WU-1 foreign entries | Uninstall keeps hook groups without the sentinel | `__aislop` absent | install-copilot > removes only managed groups and the managed instruction fence |
+| WU-1 managed-marker uninstall | No-flag uninstall touches a scope only when it holds a sentinel or fence | unmanaged `AISLOP.md` survives | hook-command > keeps unmanaged project Claude files when no scope flag is set |
+| WU-1 global scope isolation | Global install writes nothing under the project | `$COPILOT_HOME/hooks/aislop.json` only | install-copilot > writes project rules but global scope writes only COPILOT_HOME hooks |
+| WU-1 both-scope detection | A project-only install is detected and uninstalled | `detectInstalledAgents` | registry > detects a Copilot hook installed in the project scope |
+| WU-1 Stop empty list | Stop with no recorded files returns no decision | KD-005 | claude-adapter > does not scan or write when no session record exists |
+| WU-1 Stop recorded file | Stop rescans a recorded file changed outside the hook | KD-005 | claude-adapter > blocks after it rescans a recorded file with a regression |
+| WU-1 fixture guard | Each capture array's first element has an event field | `hook_event_name` or `toolName` | install-copilot > rejects a capture without an event field |
+| WU-1 shared matcher | Claude and Copilot installers share one matcher | `Edit\|Write\|MultiEdit` | install-copilot and install-claude > hook-file fixture and fresh install tests |
+| WU-2 hook registration | `setup` registers both hooks | `execute.after`, `context` | |
+| WU-2 tool filter | Only completed file tools spawn | `edit`, `write`, `patch` with `status === "completed"` | |
+| WU-2 path source | Absolute targets preferred, input path as fallback | `result.output.applied[].target`, `input.path` | |
+| WU-2 cwd | Spawn cwd is the project directory | `ctx.location.directory` | |
+| WU-2 single spawn | One child per tool call carries every path | `file_paths` array | |
+| WU-2 timeout | Whole hook bounded, child killed, no error surfaced | 8000 ms | |
+| WU-2 never throw | Spawn error, bad stdout, non-zero exit, stdin error each leave the result untouched | `try/catch` in both hooks and `stdin.on("error")` | |
+| WU-2 session buffer | Feedback reaches only its own session | `Map<sessionID>` | |
+| WU-2 buffer expiry | Stale entries are swept | 600000 ms | |
+| WU-2 non-empty message | Empty feedback is not buffered | `message.trim().length > 0` | |
+| WU-2 delivery shape | Appended message is a user text part | `{role: "user", content: [{type: "text", text}]}` | |
+| WU-2 adapter keys | Both key forms scan | `file_paths`, `file_path` | |
+| WU-2 gate rejection | `--quality-gate` with opencode exits before any write | exit 1 | |
 
 ## Gates
 
 | Gate | Criterion | Target | Measured | Status |
 | --- | --- | --- | --- | --- |
 | G1 | `audit-docs.sh --repo .` errors after Phase 1 | 0 | 0 errors, 1 warning DOC027: [capture](../evidence/20261103-phase1-audit.md) | [x] |
-| G2 | WU-1 `pnpm test` failures | 0 | | [ ] |
-| G3 | WU-1 `pnpm scan` score change versus `develop` | >= 0 | | [ ] |
-| G4 | WU-1 Mechanisms rows with a reviewer-confirmed deletion-discriminating test | 14 of 14 | | [ ] |
+| G2 | WU-1 `pnpm test` failures | 0 | 0 of 2427 (1 skipped): [evidence](../evidence/20261103-wu1-gates.md) | [x] |
+| G3 | WU-1 `pnpm scan` score change versus `develop` | >= 0 | 100 before, 100 after: [evidence](../evidence/20261103-wu1-gates.md) | [x] |
+| G4 | WU-1 Mechanisms rows with a reviewer-confirmed deletion-discriminating test | 14 of 14 | 14 of 14: [evidence](../evidence/20261103-wu1-gates.md) | [x] |
 | G5 | WU-2 `pnpm test` failures | 0 | | [ ] |
 | G6 | WU-2 `pnpm scan` score change versus `develop` | >= 0 | | [ ] |
 | G7 | WU-2 Mechanisms rows with a reviewer-confirmed deletion-discriminating test | 13 of 13 | | [ ] |
@@ -195,6 +195,9 @@ their findings bind Phases 2 and 3.
 | plan | 2 | BLOCK | 5 | 2 | 2026-10-30 |
 | plan | 3 | BLOCK | 4 | 2 | 2026-10-30 |
 | plan | 4 | BLOCK, accepted by user with carried findings | 4 | 2 | 2026-10-30 |
+| WU-1 | 1 | BLOCK (static reviewer and exec-reviewer) | 5 | 3 | 2026-11-03 |
+| WU-1 | 2 | BLOCK (exec-reviewer) | 1 | 2 | 2026-11-03 |
+| WU-1 | 3 | PASS, orchestrator verified the three round-2 items against the reviewer's own text, user approved | 0 | 0 | 2026-11-03 |
 
 ## Carried findings
 
@@ -209,6 +212,8 @@ their findings bind Phases 2 and 3.
 | C7 | Copilot telemetry reports `agent: "claude"` | plan round 2 | Documented gap in Phase 2 docs task |
 | C8 | Shell-tool edits fire no file hook on any host | spikes E7, E17 | Documented gap, KD-005 |
 | C9 | Native camelCase Copilot payload unsupported | KD-004 | Documented in Phase 2 docs task |
+| C10 | Stop unit test pins the recorded file list with a stubbed scanner, not real rescan of changed content | WU-1 round 2 | Phase 4 live Copilot check |
+| C11 | README and docs/commands.md STE scores 2.67 and 3.14, above the 2.5 flavored target, from pre-existing text | WU-1 worker | Not in scope, upstream prose |
 
 ## Related
 

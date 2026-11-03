@@ -1,0 +1,18 @@
+[
+  {
+    "hook_event_name": "PostToolUse",
+    "session_id": "3a33ce22-8bb7-430d-a997-f22af1759f9c",
+    "timestamp": "2026-10-30T22:14:25.869Z",
+    "cwd": "/tmp/opencode/aislop-spikes/s1/repo",
+    "tool_name": "Edit",
+    "tool_input": {
+      "path": "/tmp/opencode/aislop-spikes/s1/repo/src/index.ts",
+      "old_str": "export function parseValue(",
+      "new_str": "// Value parsing utilities\nexport function parseValue("
+    },
+    "tool_result": {
+      "result_type": "success",
+      "text_result_for_llm": "File /tmp/opencode/aislop-spikes/s1/repo/src/index.ts updated with changes."
+    }
+  }
+]

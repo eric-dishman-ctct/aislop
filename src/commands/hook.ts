@@ -16,6 +16,7 @@ import {
 	defaultScopeFor,
 	detectInstalledAgents,
 	REGISTRY,
+	scopeHasManagedMarker,
 } from "../hooks/install/registry.js";
 import type {
 	HookInstallOpts,
@@ -41,7 +42,7 @@ import { APP_VERSION } from "../version.js";
 // brief window to send before the process exits, then give up.
 const HOOK_FLUSH_TIMEOUT_MS = 1500;
 
-const AGENT_LABELS: Record<AgentName, { label: string; hint: string }> = {
+export const AGENT_LABELS: Record<AgentName, { label: string; hint: string }> = {
 	claude: { label: "Claude Code", hint: "PostToolUse, runtime" },
 	cursor: { label: "Cursor", hint: "afterFileEdit, runtime" },
 	gemini: { label: "Gemini CLI", hint: "AfterTool, runtime" },
@@ -51,7 +52,7 @@ const AGENT_LABELS: Record<AgentName, { label: string; hint: string }> = {
 	cline: { label: "Cline + Roo", hint: "rules-only, project" },
 	kilocode: { label: "Kilo Code", hint: "rules-only, project" },
 	antigravity: { label: "Antigravity", hint: "rules-only, project" },
-	copilot: { label: "GitHub Copilot", hint: "rules-only, project" },
+	copilot: { label: "GitHub Copilot", hint: "runtime hook, global or project" },
 };
 
 interface InstallFlags {
@@ -60,6 +61,7 @@ interface InstallFlags {
 	dryRun: boolean;
 	yes: boolean;
 	qualityGate: boolean;
+	explicitScope?: boolean;
 }
 
 interface HookInstallRenderItem {
@@ -104,9 +106,20 @@ export const hookInstall = async (flags: InstallFlags): Promise<void> => {
 export const hookUninstall = async (flags: InstallFlags): Promise<void> => {
 	const items: HookUninstallRenderItem[] = [];
 	for (const agent of flags.agents) {
-		const opts = resolveOpts(agent, flags);
-		const result = REGISTRY[agent].uninstall(opts);
-		items.push({ agent, scope: opts.scope, result });
+		const scopes =
+			!flags.explicitScope && AGENTS_SUPPORTING_BOTH_SCOPES.includes(agent)
+				? (["global", "project"] as const)
+				: [resolveOpts(agent, flags).scope];
+		for (const scope of scopes) {
+			const opts = { ...resolveOpts(agent, flags), scope };
+			if (
+				!flags.explicitScope &&
+				!scopeHasManagedMarker(agent, { home: opts.home, cwd: opts.cwd, scope })
+			)
+				continue;
+			const result = REGISTRY[agent].uninstall(opts);
+			items.push({ agent, scope, result });
+		}
 	}
 	process.stdout.write(renderHookUninstall({ dryRun: flags.dryRun, items }));
 };
@@ -208,11 +221,13 @@ export const hookStatus = async (): Promise<void> => {
 	const cwd = process.cwd();
 	const installed = new Set(detectInstalledAgents({ home, cwd }));
 	const items = ALL_AGENTS.map((agent) => {
-		const scope = defaultScopeFor(agent);
-		const targets = REGISTRY[agent].paths({ home, cwd, scope });
+		const scopes = AGENTS_SUPPORTING_BOTH_SCOPES.includes(agent)
+			? (["global", "project"] as const)
+			: [defaultScopeFor(agent)];
+		const targets = scopes.flatMap((scope) => REGISTRY[agent].paths({ home, cwd, scope }));
 		return {
 			agent,
-			scope,
+			scope: scopes.join(" + "),
 			installed: installed.has(agent),
 			paths: targets.filter((p) => fs.existsSync(p)),
 		};
@@ -223,7 +238,7 @@ export const hookStatus = async (): Promise<void> => {
 export const renderHookStatus = (
 	items: Array<{
 		agent: AgentName;
-		scope: "global" | "project";
+		scope: string;
 		installed: boolean;
 		paths: string[];
 	}>,
