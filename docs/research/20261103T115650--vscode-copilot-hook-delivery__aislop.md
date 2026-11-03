@@ -5,7 +5,7 @@ title: "VS Code Copilot session target reads the aislop hook file"
 summary: "Q6 from the foundation plan: VS Code 1.144.0 fires PostToolUse and Stop from .github/hooks/aislop.json with the same payload as the Copilot CLI, but its hook process has a minimal PATH"
 status: concluded
 created: 2026-11-03T11:56:50
-updated: 2026-11-03T11:56:50
+updated: 2026-11-03T14:04:56
 tags: ["aislop", "hooks", "copilot", "vscode"]
 ---
 
@@ -59,6 +59,13 @@ from the same repository and hook file. Paths are replaced with `<repo>` in both
   appears to be no, but one run is not a sweep.
 - Does the global hook location `~/.copilot/hooks/aislop.json` behave the same in VS Code?
   Not tested.
+
+## Correction (2026-11-03, later the same day)
+
+[R-003](20261103T132420--hook-command-environment-probes__aislop.md) measured the VS Code
+hook `PATH`. It is the full desktop-session `PATH`, not a minimal one. It lacks only the
+nvm bin directory. The `node: not found` cause below stands. The word "minimal" in this
+note is wrong in degree.
 
 ## Conclusion
 
