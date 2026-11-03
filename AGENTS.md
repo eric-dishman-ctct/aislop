@@ -149,3 +149,10 @@ This applies to regex patterns, string literals, and diagnostic messages in all 
   ships as null from its resolver function.
 - PostHog telemetry key is a public client-side key (safe to hardcode)
 - Telemetry is opt-out and off in CI by default
+
+## Project documentation
+
+Plans, decisions, and research notes live in `docs/plans/`, `docs/decisions/`, and
+`docs/research/`. They follow the `project-docs-conventions` skill (naming, front matter,
+audit). The generated index is `docs/README.md`. Scaffold new documents with `newdoc.sh`
+and run `audit-docs.sh` before a commit that touches `docs/`.

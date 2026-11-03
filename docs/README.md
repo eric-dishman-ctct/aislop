@@ -1,0 +1,22 @@
+# Documentation index
+
+This file is generated from document front matter by make-index.sh (or its
+PowerShell twin make-index.ps1) in the project-docs-conventions skill.
+Do not edit it by hand. Regenerate it after any document change; audit rule
+DOC026 reports a stale copy.
+
+## Plans
+
+| Id | Title | Status | Scope |
+| -- | ----- | ------ | ----- |
+| [foundation](plans/20261103T091028--foundation__aislop.md) | Foundation: runtime hooks for Copilot and OpenCode | in-progress | Adopt the docs system and add per-edit runtime hook adapters for the Copilot shared harness and OpenCode v2 |
+
+## Decisions
+
+| Id | Title | Status | Scope |
+| -- | ----- | ------ | ----- |
+| [KD-001](decisions/20261103T090201--adopt-doc-conventions__aislop.md) | Adopt doc conventions | accepted | Plans, decisions, and research notes follow the project-docs-conventions skill |
+| [KD-002](decisions/20261103T090819--adopt-evidence-rule__aislop.md) | Adopt evidence rule | accepted | Claims about measurements cite the verbatim command and its actual captured output |
+| [KD-003](decisions/20261103T090903--adopt-review-rule__aislop.md) | Adopt review rule | accepted | Changes get independent fresh-context review before commit; sub-agents never commit |
+| [KD-004](decisions/20261103T090950--copilot-reuses-claude-adapter__aislop.md) | Copilot reuses the Claude hook adapter | accepted | The Copilot shared harness calls aislop hook claude; no copilot runtime adapter is written |
+| [KD-005](decisions/20261103T090951--quality-gate-covers-tool-edits-only__aislop.md) | Quality gate covers tool-observed edits only | accepted | The Stop gate rescans files recorded by Edit, Write, and MultiEdit calls; shell edits to unrecorded files are not seen |
