@@ -197,6 +197,8 @@ Session review commands:
 
 Agent shortcut flags: `--claude`, `--cursor`, `--gemini`, `--pi`, `--codex`, `--windsurf`, `--cline`, `--kilocode`, `--antigravity`, `--copilot`, `--opencode`.
 
+Copilot runtime hooks need VS Code 1.144.0 or Copilot CLI 1.0.105 or later, and a trusted folder. The hook command is `aislop hook claude`. The VS Code hook process has a minimal `PATH`. If hooks are silent in VS Code but work in the Copilot CLI, make sure `aislop` and `node` resolve from a minimal `PATH`, for example with a system-wide Node and a global install.
+
 Copilot runtime hooks are Preview. They need VS Code 1.144.0 or later, or Copilot CLI 1.0.105 or later. Trust the folder with `--trust-folder` or `trustedFolders` before hooks run. Run `aislop hook baseline` before the quality gate. The gate rescans files recorded from Edit, Write, and MultiEdit calls. It does not see shell edits to unrecorded files. Records persist across sessions until a Stop with no regression clears them. Native camelCase payloads are unsupported. Copilot scans report `claude` telemetry.
 
 OpenCode runtime hooks need OpenCode 2.2.4 or later. Install them at the global or project scope. OpenCode has no quality gate. Shell-tool edits do not fire a file hook. A running OpenCode server does not load a newly installed plugin. Start a new OpenCode process after install.

@@ -156,3 +156,7 @@ Plans, decisions, and research notes live in `docs/plans/`, `docs/decisions/`, a
 `docs/research/`. They follow the `project-docs-conventions` skill (naming, front matter,
 audit). The generated index is `docs/README.md`. Scaffold new documents with `newdoc.sh`
 and run `audit-docs.sh` before a commit that touches `docs/`.
+
+This repository is a fork. It pulls from `scanaislop/aislop` `develop` and does not open
+pull requests upstream. See KD-006 in `docs/decisions/`. The "open PRs to develop" line in
+the Workflow section above applies to the fork's own `develop`.

@@ -1,0 +1,122 @@
+ARGS=hook claude
+IN={"hook_event_name":"PostToolUse","session_id":"494db565-193b-4828-9c4f-5b64b54cf529","timestamp":"2026-11-03T17:19:40.904Z","cwd":"<repo>","tool_name":"Edit","tool_input":{"path":"<repo>/src/index.ts","old_str":"  return \"\";\n}\n","new_str":"  return \"\";\n}\nconst leaked = JSON.parse(\"{}\") as any; try { leaked.x() } catch (e) {}\n"},"tool_result":{"result_type":"success","text_result_for_llm":"File <repo>/src/index.ts updated with changes."}}
+OUT={"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"{\"schema\":\"aislop.hook.v2\",\"score\":58,\"baseline\":100,\"delta\":-42,\"regressed\":true,\"accountability\":{\"agent\":\"claude\",\"touchedFiles\":[\"<repo>/src/index.ts\"],\"newFindingCount\":4,\"mustFixBeforeDone\":true,\"reason\":\"Score regressed against the captured baseline. The agent should fix or justify the new findings before finishing.\"},\"counts\":{\"error\":2,\"warning\":2,\"fixable\":0,\"total\":4},\"findings\":[{\"ruleId\":\"ai-slop/swallowed-exception\",\"severity\":\"error\",\"category\":\"AI Slop\",\"file\":\"src/index.ts\",\"line\":4,\"message\":\"Empty catch block swallows errors silently\"},{\"ruleId\":\"ai-slop/swallowed-exception\",\"severity\":\"error\",\"category\":\"AI Slop\",\"file\":\"src/index.ts\",\"line\":8,\"message\":\"Empty catch block swallows errors silently\"},{\"ruleId\":\"ai-slop/unsafe-type-assertion\",\"severity\":\"warning\",\"category\":\"AI Slop\",\"file\":\"src/index.ts\",\"line\":3,\"message\":\"'as any' bypasses type safety\"},{\"ruleId\":\"ai-slop/unsafe-type-assertion\",\"severity\":\"warning\",\"category\":\"AI Slop\",\"file\":\"src/index.ts\",\"line\":8,\"message\":\"'as any' bypasses type safety\"}],\"nextSteps\":[\"Fix 2 errors before the next turn.\",\"Address 4 findings in src/index.ts (lines 4, 8, 3).\"],\"suggestedActions\":[{\"id\":\"review_finding\",\"label\":\"Score dropped 42 points — review the top 3 findings from this edit.\",\"rationale\":\"None of these are auto-fixable. Read each one against the source and decide whether the fix is to change the code or to add a justified suppression with a reason.\",\"ruleIds\":[\"ai-slop/swallowed-exception\",\"ai-slop/swallowed-exception\",\"ai-slop/unsafe-type-assertion\"]}]}"}}
+---
+ARGS=hook claude --stop
+IN={"hook_event_name":"Stop","session_id":"494db565-193b-4828-9c4f-5b64b54cf529","timestamp":"2026-11-03T17:19:42.938Z","cwd":"<repo>","transcript_path":"/home/u_dishmej/.copilot/session-state/494db565-193b-4828-9c4f-5b64b54cf529/events.jsonl","stop_reason":"end_turn","stop_hook_active":false}
+OUT={"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"{\"schema\":\"aislop.hook.v2\",\"score\":58,\"baseline\":100,\"delta\":-42,\"regressed\":true,\"accountability\":{\"agent\":\"claude\",\"touchedFiles\":[\"<repo>/src/index.ts\"],\"newFindingCount\":4,\"mustFixBeforeDone\":true,\"reason\":\"Score regressed against the captured baseline. The agent should fix or justify the new findings before finishing.\"},\"counts\":{\"error\":2,\"warning\":2,\"fixable\":0,\"total\":4},\"findings\":[{\"ruleId\":\"ai-slop/swallowed-exception\",\"severity\":\"error\",\"category\":\"AI Slop\",\"file\":\"src/index.ts\",\"line\":4,\"message\":\"Empty catch block swallows errors silently\"},{\"ruleId\":\"ai-slop/swallowed-exception\",\"severity\":\"error\",\"category\":\"AI Slop\",\"file\":\"src/index.ts\",\"line\":8,\"message\":\"Empty catch block swallows errors silently\"},{\"ruleId\":\"ai-slop/unsafe-type-assertion\",\"severity\":\"warning\",\"category\":\"AI Slop\",\"file\":\"src/index.ts\",\"line\":3,\"message\":\"'as any' bypasses type safety\"},{\"ruleId\":\"ai-slop/unsafe-type-assertion\",\"severity\":\"warning\",\"category\":\"AI Slop\",\"file\":\"src/index.ts\",\"line\":8,\"message\":\"'as any' bypasses type safety\"}],\"nextSteps\":[\"Fix 2 errors before the next turn.\",\"Address 4 findings in src/index.ts (lines 4, 8, 3).\"],\"suggestedActions\":[{\"id\":\"review_finding\",\"label\":\"Score dropped 42 points — review the top 3 findings from this edit.\",\"rationale\":\"None of these are auto-fixable. Read each one against the source and decide whether the fix is to change the code or to add a justified suppression with a reason.\",\"ruleIds\":[\"ai-slop/swallowed-exception\",\"ai-slop/swallowed-exception\",\"ai-slop/unsafe-type-assertion\"]}]}"},"decision":"block","reason":"aislop: score dropped from 100 to 58. Fix the 4 findings before finishing."}
+---
+ARGS=scan src/index.ts
+IN=
+OUT= [x] Not a directory: <repo>/src/index.ts
+---
+ARGS=scan
+IN=
+OUT= aislop 0.20.0  ·  the quality gate for agentic coding
+
+ Scan result  ·  s1-hook-probe  ·  typescript  ·  1 files
+
+ Scope  1 file(s) after exclusions
+ [ok] Formatting: done (0 issues, 43ms)
+ [!] Code Quality: done (, 25ms)
+ [x] AI Slop: done (2 errors, 2 warnings, 23ms)
+ [!] Linting: done (4 warnings, 66ms)
+ [!] Security: done (, 166ms)
+  > Linting
+    [WARN] Unexpected empty block statements (2)
+      src/index.ts:4:19
+      src/index.ts:8:70
+      Remove this block or add a comment inside it
+
+    [WARN] Catch parameter 'error' is caught but never used.
+      src/index.ts:4:12
+      Consider handling this error.
+
+    [WARN] Catch parameter 'e' is caught but never used.
+      src/index.ts:8:67
+      Consider handling this error.
+
+  > Code Quality
+    [INFO] Unused code check skipped: Knip is not set up in this project
+      package.json
+      Unused files, exports and dependencies were not checked. Add a knip config file (for example knip.json) or add
+      knip to devDependencies to enable the check, or set quality.knip: always to run it without that setup.
+
+  > AI Slop
+    [ERROR] Empty catch block swallows errors silently (2)
+      src/index.ts:4
+      src/index.ts:8
+      Handle errors explicitly: log with context, rethrow, or return an error value
+
+    [WARN] 'as any' bypasses type safety (2)
+      src/index.ts:3
+      src/index.ts:8
+      Use a proper type or a more specific assertion
+
+  > Security
+    [INFO] Dependency audit skipped (npm audit): lockfile is missing
+      package.json
+      Try creating one first with: npm i --package-lock-only Original error: loadVirtual requires existing shrinkwrap
+      file
+
+
+   55 / 100  Needs Work    2 errors  ·  6 warnings  ·  0 fixable
+   1 files  ·  5 engines  ·  208ms
+
+   Verdict mix: 5 style/policy  ·  4 AI-slop indicators  ·  1 conservative security  ·  2 high-confidence, 8 medium-confidence
+
+ Top findings
+   #  Finding                        Rule                               Status
+   2  Empty catch (swallowed error)  ai-slop/swallowed-exception        2 err
+   2  Unsafe type cast               ai-slop/unsafe-type-assertion      2 warn
+   2  Empty block statement          eslint/no-empty                    2 warn
+   2  Unused variable                eslint/no-unused-vars              2 warn
+   1  Unused code check skipped      knip/skipped                       1 info
+   1  Dependency audit skipped       security/dependency-audit-skipped  1 info
+
+ Agent repair plan
+   Agent     aislop agent                   run a local worktree repair session
+   Provider  aislop agent --provider codex  or use --provider claude/opencode/pi
+   Preview   aislop agent plan              preview provider, worktree, findings, and publish actions
+---
+ARGS=scan
+IN=
+OUT= aislop 0.20.0  ·  the quality gate for agentic coding
+
+ Scan result  ·  s1-hook-probe  ·  typescript  ·  1 files
+
+ Scope  1 file(s) after exclusions
+ [ok] Formatting: done (0 issues, 56ms)
+ [!] Code Quality: done (, 33ms)
+ [ok] AI Slop: done (0 issues, 29ms)
+ [ok] Linting: done (0 issues, 81ms)
+ [!] Security: done (, 158ms)
+  > Code Quality
+    [INFO] Unused code check skipped: Knip is not set up in this project
+      package.json
+      Unused files, exports and dependencies were not checked. Add a knip config file (for example knip.json) or add
+      knip to devDependencies to enable the check, or set quality.knip: always to run it without that setup.
+
+  > Security
+    [INFO] Dependency audit skipped (npm audit): lockfile is missing
+      package.json
+      Try creating one first with: npm i --package-lock-only Original error: loadVirtual requires existing shrinkwrap
+      file
+
+
+   98 / 100  Healthy       0 errors  ·  0 warnings  ·  0 fixable
+   1 files  ·  5 engines  ·  210ms
+
+   Verdict mix: 1 style/policy  ·  1 conservative security  ·  2 medium-confidence
+
+ Top findings
+   #  Finding                    Rule                               Status
+   1  Unused code check skipped  knip/skipped                       1 info
+   1  Dependency audit skipped   security/dependency-audit-skipped  1 info
+
+ ★ Found this useful? Star us at https://github.com/scanaislop/aislop
+---
+ARGS=hook claude --stop
+IN={"hook_event_name":"Stop","session_id":"494db565-193b-4828-9c4f-5b64b54cf529","timestamp":"2026-11-03T17:19:58.074Z","cwd":"<repo>","transcript_path":"/home/u_dishmej/.copilot/session-state/494db565-193b-4828-9c4f-5b64b54cf529/events.jsonl","stop_reason":"end_turn","stop_hook_active":true}
+OUT=
+---

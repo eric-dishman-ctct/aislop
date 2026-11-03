@@ -1,0 +1,12 @@
+ARGS=hook claude
+IN={"hook_event_name":"PostToolUse","session_id":"39f70851-03e2-4796-afaf-b618e022b3e4","timestamp":"2026-11-03T17:54:22.982Z","cwd":"<repo>","tool_name":"Edit","tool_input":{"path":"<repo>/src/index.ts","old_str":"  return \"\";\n}\n","new_str":"  return \"\";\n}\nconst leaked = JSON.parse(\"{}\") as any; try { leaked.x() } catch (e) {}\n"},"tool_result":{"result_type":"success","text_result_for_llm":"File <repo>/src/index.ts updated with changes."}}
+OUT=
+---
+ARGS=hook claude --stop
+IN={"hook_event_name":"Stop","session_id":"39f70851-03e2-4796-afaf-b618e022b3e4","timestamp":"2026-11-03T17:54:28.114Z","cwd":"<repo>","transcript_path":"/home/u_dishmej/.copilot/session-state/39f70851-03e2-4796-afaf-b618e022b3e4/events.jsonl","stop_reason":"end_turn","stop_hook_active":false}
+OUT=
+---
+ARGS=hook claude
+IN={"hook_event_name":"PostToolUse","cwd":"<repo>","tool_name":"Edit","tool_input":{"path":"<repo>/src/index.ts"}}
+OUT=
+---

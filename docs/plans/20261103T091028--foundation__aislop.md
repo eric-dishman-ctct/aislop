@@ -4,7 +4,7 @@ title: "Foundation: runtime hooks for Copilot and OpenCode"
 summary: "Adopt the docs system and add per-edit runtime hook adapters for the Copilot shared harness and OpenCode v2"
 status: in-progress
 created: 2026-11-03T09:10:28
-updated: 2026-11-03T11:19:01
+updated: 2026-11-03T12:14:23
 tags: ["aislop", "hooks", "copilot", "opencode"]
 ---
 
@@ -12,7 +12,7 @@ tags: ["aislop", "hooks", "copilot", "opencode"]
 
 ## Status
 
-Documentation system adopted on branch `feat/copilot-opencode-hooks`. Phase 1 complete at 674636a. Phase 2 (Copilot) complete at e630c5e. Phase 3 (OpenCode) complete at 08fbad5. Phase 4 (integration) in progress.
+Documentation system adopted on branch `feat/copilot-opencode-hooks`. Phase 1 complete at 674636a. Phase 2 (Copilot) complete at e630c5e. Phase 3 (OpenCode) complete at 08fbad5. Phase 4: live checks, Q6, and cross-seam done. Tag pending. No upstream PR ([KD-006](../decisions/20261103T121350--fork-does-not-contribute-upstream__aislop.md)).
 
 ## Context
 
@@ -36,7 +36,7 @@ reuses the Claude adapter),
 [KD-005](../decisions/20261103T090951--quality-gate-covers-tool-edits-only__aislop.md)
 (quality gate scope).
 
-Project constraints from `AGENTS.md`: branch from `origin/develop`, draft PR to `develop`,
+Project constraints from `AGENTS.md`: branch from `origin/develop`, no upstream PR ([KD-006](../decisions/20261103T121350--fork-does-not-contribute-upstream__aislop.md)),
 `pnpm typecheck && pnpm test && pnpm scan` green, no Unix-only shell in scripts, no
 self-detecting literals in detector source, no em dashes.
 
@@ -121,21 +121,13 @@ carried findings C4 and C6, and spike evidence E8 to E19 from the accepted plan.
 
 Risk: LOW. Orchestrator runs existing tools. One reviewer for the cross-seam evidence.
 
-- [ ] Live check: generated OpenCode plugin installed in `/tmp/opencode/aislop-spikes/s2/repo`, S3 run-1 prompt, model quotes `AISLOP FEEDBACK`
-- [ ] Capture named
-- [ ] Live check: Copilot CLI with the generated `.github/hooks/aislop.json` in a trusted folder, PostToolUse and Stop fire
-- [ ] Capture named
-- [ ] Manual check Q6: VS Code 1.144.0 Copilot session target reads `.github/hooks/` and honours trust the same way as the CLI
-- [ ] User at the keyboard
-- [ ] Result recorded as a research note
-- [ ] Cross-seam: path extraction in `claude.ts`, the pi extension, and the OpenCode plugin each mutated in turn
-- [ ] Only its own test fails
-- [ ] Capture named
-- [ ] Cross-seam: `buildHookGroup` matcher changed
-- [ ] Both installer tests fail
-- [ ] Capture named
+- [x] Live check: generated OpenCode plugin installed in `/tmp/opencode/aislop-spikes/s2/repo`, S3 run-1 prompt, model quotes `AISLOP FEEDBACK`: [evidence](../evidence/20261103-wu2-gates.md)
+- [x] Live check: Copilot CLI with the generated `.github/hooks/aislop.json` in a trusted folder, PostToolUse and Stop fire, capture named: [evidence](../evidence/20261103-wu3-integration.md)
+- [x] Manual check Q6: VS Code 1.144.0 Copilot session target reads `.github/hooks/` and honours trust the same way as the CLI, user at the keyboard, result in a research note: [R-001](../research/20261103T115650--vscode-copilot-hook-delivery__aislop.md)
+- [x] Cross-seam: path extraction in `claude.ts`, the pi extension, and the OpenCode plugin each mutated in turn, only its own test fails, pi has no test (C13), capture named: [evidence](../evidence/20261103-wu3-integration.md)
+- [x] Cross-seam: `buildHookGroup` matcher changed, both installer tests fail, capture named: [evidence](../evidence/20261103-wu3-integration.md)
 - [ ] Wave tag `wave-hooks-v1`, push with `--follow-tags` to `fork`
-- [ ] Draft PR to `scanaislop/aislop` `develop`
+- [-] Draft PR to `scanaislop/aislop` `develop`: [KD-006](../decisions/20261103T121350--fork-does-not-contribute-upstream__aislop.md)
 
 ## Mechanisms
 
@@ -181,8 +173,8 @@ Risk: LOW. Orchestrator runs existing tools. One reviewer for the cross-seam evi
 | G6 | WU-2 `pnpm scan` score change versus `develop` | >= 0 | 100 before, 100 after, 0 warnings: [evidence](../evidence/20261103-wu2-gates.md) | [x] |
 | G7 | WU-2 Mechanisms rows with a reviewer-confirmed deletion-discriminating test | 13 of 13 | 13 of 13: [evidence](../evidence/20261103-wu2-gates.md) | [x] |
 | G8 | Live OpenCode delivery: model quotes feedback | yes | yes, score 73/100 quoted: [evidence](../evidence/20261103-wu2-gates.md) | [x] |
-| G9 | Live Copilot CLI: PostToolUse and Stop both fire from the generated file | yes | | [ ] |
-| G10 | Cross-seam mutations with exactly one failing test each | 4 of 4 | | [ ] |
+| G9 | Live Copilot CLI: PostToolUse and Stop both fire from the generated file | yes | yes, and Stop block honoured: [evidence](../evidence/20261103-wu3-integration.md) | [x] |
+| G10 | Cross-seam mutations with exactly one failing test each | 4 of 4 | 3 of 4, X2 pi extension has no test, pre-existing (C13): [evidence](../evidence/20261103-wu3-integration.md) | [ ] |
 
 ## Review log
 
@@ -217,6 +209,8 @@ their findings bind Phases 2 and 3.
 | C9 | Native camelCase Copilot payload unsupported | KD-004 | Documented in Phase 2 docs task |
 | C10 | Stop unit test pins the recorded file list with a stubbed scanner, not real rescan of changed content | WU-1 round 2 | Phase 4 live Copilot check |
 | C12 | OpenCode resident server does not reload a newly installed project plugin; a fresh process is needed | WU-2 live check | Documented in Phase 3 docs task |
+| C13 | The pi extension's path extraction (`event.input.path` in `install/pi.ts`) has no discriminating test. Pre-existing, untouched by this plan | WU-3 cross-seam X2 | Open. Candidate for a follow-up unit |
+| C14 | VS Code's hook process has a minimal PATH, so `aislop hook claude` can fail to resolve `aislop` or `node` while the CLI works. Silent in VS Code | [R-001](../research/20261103T115650--vscode-copilot-hook-delivery__aislop.md) | Docs note in this wave. A later KD weighs absolute binary paths in hook commands |
 | C11 | README and docs/commands.md STE scores 2.67 and 3.14, above the 2.5 flavored target, from pre-existing text | WU-1 worker | Not in scope, upstream prose |
 
 ## Related
