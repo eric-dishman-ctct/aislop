@@ -27,3 +27,4 @@ DOC026 reports a stale copy.
 | Id | Title | Status | Scope |
 | -- | ----- | ------ | ----- |
 | [R-001](research/20261103T115650--vscode-copilot-hook-delivery__aislop.md) | VS Code Copilot session target reads the aislop hook file | concluded | Q6 from the foundation plan: VS Code 1.144.0 fires PostToolUse and Stop from .github/hooks/aislop.json with the same payload as the Copilot CLI, but its hook process has a minimal PATH |
+| [R-002](research/20261103T130449--hook-command-binary-resolution__aislop.md) | How aislop hook commands find the binary, and what each host gives them | concluded | Survey of the six installers' command strings, the sentinel hash, host hook environments, and precedents from husky and pre-commit, to ground a decision on PATH-independent hook commands |

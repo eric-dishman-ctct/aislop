@@ -4,7 +4,7 @@ title: "Foundation: runtime hooks for Copilot and OpenCode"
 summary: "Adopt the docs system and add per-edit runtime hook adapters for the Copilot shared harness and OpenCode v2"
 status: in-progress
 created: 2026-11-03T09:10:28
-updated: 2026-11-03T12:14:42
+updated: 2026-11-03T13:07:41
 tags: ["aislop", "hooks", "copilot", "opencode"]
 ---
 
@@ -210,7 +210,7 @@ their findings bind Phases 2 and 3.
 | C10 | Stop unit test pins the recorded file list with a stubbed scanner, not real rescan of changed content | WU-1 round 2 | Phase 4 live Copilot check |
 | C12 | OpenCode resident server does not reload a newly installed project plugin; a fresh process is needed | WU-2 live check | Documented in Phase 3 docs task |
 | C13 | The pi extension's path extraction (`event.input.path` in `install/pi.ts`) has no discriminating test. Pre-existing, untouched by this plan | WU-3 cross-seam X2 | Open. Candidate for a follow-up unit |
-| C14 | VS Code's hook process has a minimal PATH, so `aislop hook claude` can fail to resolve `aislop` or `node` while the CLI works. Silent in VS Code | [R-001](../research/20261103T115650--vscode-copilot-hook-delivery__aislop.md) | Docs note in this wave. A later KD weighs absolute binary paths in hook commands |
+| C14 | VS Code's hook process has a minimal PATH, so `aislop hook claude` can fail to resolve `aislop` or `node` while the CLI works. Silent in VS Code. Survey in [R-002](../research/20261103T130449--hook-command-binary-resolution__aislop.md) | [R-001](../research/20261103T115650--vscode-copilot-hook-delivery__aislop.md) | Docs note in this wave. A later KD weighs absolute binary paths in hook commands |
 | C11 | README and docs/commands.md STE scores 2.67 and 3.14, above the 2.5 flavored target, from pre-existing text | WU-1 worker | Not in scope, upstream prose |
 
 ## Related
