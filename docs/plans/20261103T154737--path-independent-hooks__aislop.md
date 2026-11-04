@@ -2,9 +2,9 @@
 type: plan
 title: "PATH-independent hook commands"
 summary: "Make every aislop hook run without PATH lookup of aislop or node, per KD-007: install-time resolver, per-host command builders, run-time resolution in plugins, a temporary-install guard, and hook doctor"
-status: complete
+status: in-progress
 created: 2026-11-03T15:47:37
-updated: 2026-11-04T13:44:41
+updated: 2026-11-04T13:59:00
 tags: ["aislop", "hooks", "path"]
 ---
 
@@ -12,7 +12,7 @@ tags: ["aislop", "hooks", "path"]
 
 ## Status
 
-In progress. U1 committed as b47169d. U2 committed as 136ed93. U3 committed as 0d5c198. U4 committed as dc345c6. Phase 5 integration done, tagged wave-hooks-v2 on 7a94e09. Plan complete. Accepted revision 2 after two plan review rounds. Round 2 findings are folded in as C5. Decision [KD-007](../decisions/20261103T140509--hook-command-embeds-node-and-cli-paths__aislop.md)
+In progress. U1 committed as b47169d. U2 committed as 136ed93. U3 committed as 0d5c198. U4 committed as dc345c6. Phase 5 integration done, tagged wave-hooks-v2 on 7a94e09. Phase 6 (U5) added for C14, in progress. Accepted revision 2 after two plan review rounds. Round 2 findings are folded in as C5. Decision [KD-007](../decisions/20261103T140509--hook-command-embeds-node-and-cli-paths__aislop.md)
 accepted. No unit started. Baseline for all reviews: the commit that lands this plan.
 
 ## Context
@@ -142,6 +142,24 @@ Risk: LOW. Orchestrator runs existing tools and live checks.
 - [x] Cross-seam: one builder change fails tests in every installer that uses it ([p5-integration](../evidence/20261104-p5-integration.md))
 - [x] Tag `wave-hooks-v2` on 7a94e09, pushed with `--follow-tags`
 
+### Phase 6: PATH-safe agent guidance (U5, carried finding C14)
+
+Risk: LOW. No installer or runtime-file change. The feedback text and the generated
+instructions change. A wrong command string shows the user a failed command, it does
+not break the gate.
+
+Problem: in the live VS Code run the agent tried to run bare `aislop` to confirm its fix,
+could not find Node, and wrote "No Node runtime is on PATH" in the transcript. The hook
+worked, but the user sees a tool failure.
+
+- [ ] `suggestedActions[].command` uses the absolute form `'<node>' '<cli>' fix` when the hook process itself ran from an absolute command, and `aislop fix` otherwise. The hook reads `process.execPath` and `process.argv[1]`. It does not read the runtime file
+- [ ] The Stop block adds a `verify_fix` action with the command `<form> scan` limited to the touched files, so the agent has a command that works where the hook works
+- [ ] The generated instructions (AISLOP.md body and the Copilot fence) tell the agent: the hook output is the authoritative scan, run `aislop` only with the exact command from `suggestedActions[].command`, the CLI may not be on PATH
+- [ ] Tests red-first per Mechanisms row, deletion checks pasted
+- [ ] Docs: README.md and docs/commands.md one sentence each
+- [ ] Live VS Code rerun from the installer-written global hook. Acceptance: the transcript has no "cannot run", "not on PATH", or "can't run the CLI" statement, and the agent verifies with the given command or finishes from the findings
+- [ ] Commit, staged by name
+
 ## Mechanisms
 
 | Mechanism | Property that must hold | Literal value | Test |
@@ -178,6 +196,9 @@ Risk: LOW. Orchestrator runs existing tools and live checks.
 | U4 stale detection | Missing nodePath or cliPath, or version mismatch, is reported stale | `nodePath` exists, `cliPath` exists, `version` equals current | `tests/hooks/doctor.test.ts`: reports stale runtime paths and a version mismatch |
 | U4 timeout | A hung hook is killed and reported | 10000 ms default, `child.kill()` | `tests/hooks/doctor.test.ts`: kills the child at 10,000 ms on the default timeout |
 | U4 repair | Install over a stale absolute command rewrites it | global reinstall rewrites a stale absolute entry, summary names the rewrite | `tests/hooks/hook-command.test.ts`: stale absolute Claude command rewrite |
+| U5 command form | Absolute when the hook ran from an absolute command, portable otherwise | `process.execPath`, `process.argv[1]` basename is not `aislop` | |
+| U5 verify action | A Stop block includes `verify_fix` with the touched files | `id: "verify_fix"` | |
+| U5 instruction text | Generated instructions name the rule and the fence hash changes | "run `aislop` only with the exact command from `suggestedActions`" | |
 
 ## Gates
 
@@ -191,6 +212,8 @@ Risk: LOW. Orchestrator runs existing tools and live checks.
 | G6 | Self-scan score versus `wave-hooks-v1` | >= 100, 0 warnings | 100 of 100, 0 warnings, no suppressions, [u4-gates](../evidence/20261103-u4-gates.md) | [x] |
 | G7 | Live VS Code block-and-fix with the installer-written global hook, no probe wrapper | yes | yes, run 3 after baseline capture, [p5-integration](../evidence/20261104-p5-integration.md) | [x] |
 | G8 | Live refusal under `npx` from a packed tarball, exit 1, no file written | yes | yes, exit 1, no hook file, [p5-integration](../evidence/20261104-p5-integration.md) | [x] |
+| G10 | U5 rows with a reviewer-confirmed test | 3 of 3 | | [ ] |
+| G11 | Live VS Code transcript free of CLI failure statements after a block | yes | | [ ] |
 | G9 | Builders labelled unverified on Windows in docs | present | present, README.md:294 and docs/commands.md:202, [p5-integration](../evidence/20261104-p5-integration.md) | [x] |
 
 ## Review log
