@@ -12,7 +12,7 @@ tags: ["aislop", "hooks", "path"]
 
 ## Status
 
-In progress. U1 committed as b47169d. U2 committed as 136ed93. U3 committed as 0d5c198. U4 passed review, commit pending. Accepted revision 2 after two plan review rounds. Round 2 findings are folded in as C5. Decision [KD-007](../decisions/20261103T140509--hook-command-embeds-node-and-cli-paths__aislop.md)
+In progress. U1 committed as b47169d. U2 committed as 136ed93. U3 committed as 0d5c198. U4 committed as dc345c6. Phase 5 integration next. Accepted revision 2 after two plan review rounds. Round 2 findings are folded in as C5. Decision [KD-007](../decisions/20261103T140509--hook-command-embeds-node-and-cli-paths__aislop.md)
 accepted. No unit started. Baseline for all reviews: the commit that lands this plan.
 
 ## Context
