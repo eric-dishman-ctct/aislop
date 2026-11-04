@@ -113,6 +113,26 @@ describe("buildFeedback v2 — delta + newSinceBaseline + suggestedActions", () 
 		expect(fix?.command).toBe("aislop fix");
 	});
 
+	it("U5 verify action: adds a changes scan only for a regression", () => {
+		const prefix = "'/opt/node' '/opt/aislop/dist/cli.js'";
+		const regressed = buildFeedback(
+			[diag()],
+			80,
+			"/repo",
+			{ score: 90, findingFingerprints: [] },
+			{ agent: "claude", touchedFiles: ["src/a file.ts", "src/b.ts"] },
+			prefix,
+		);
+		const verify = regressed.suggestedActions.find((action) => action.id === "verify_fix");
+		expect(verify).toMatchObject({
+			command: `${prefix} scan --changes`,
+			label: "Run the verify command to confirm the fix before finishing",
+		});
+		expect(verify?.rationale).toContain("src/a file.ts, src/b.ts");
+		expect(buildFeedback([diag()], 90, "/repo", { score: 90, findingFingerprints: [] }).suggestedActions)
+			.not.toContainEqual(expect.objectContaining({ id: "verify_fix" }));
+	});
+
 	it("suggestedActions emits review_finding for arch/* errors (not auto-fixable)", () => {
 		const archErr = diag({
 			rule: "arch/no-cross-layer-imports",
@@ -132,10 +152,10 @@ describe("buildFeedback v2 — delta + newSinceBaseline + suggestedActions", () 
 		expect(review?.label).toContain("Score dropped 10 points");
 	});
 
-	it("suggestedActions stays at no_action on a small regression with no fixable", () => {
+	it("suggestedActions adds verify_fix on a small regression with no fixable findings", () => {
 		const fb = buildFeedback([diag()], 88, "/repo", { score: 90, findingFingerprints: [] });
-		// regressed=true, but delta=-2 is below the ≥5 review threshold and no fixable
-		expect(fb.suggestedActions.map((a) => a.id)).toEqual(["no_action"]);
+		// The regression requires verification even below the review threshold.
+		expect(fb.suggestedActions.map((a) => a.id)).toEqual(["verify_fix"]);
 	});
 
 	it("keeps v1's nextSteps populated for back-compat consumers", () => {

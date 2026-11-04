@@ -104,9 +104,45 @@ describe("runClaudeStopHook", () => {
 		const scan = vi.fn(async (_cwd: string, files: string[]) => scanResult(cwd, true));
 		const write = vi.fn();
 
-		await runClaudeStopHook({ stdin: async () => JSON.stringify({ cwd }), scan, write });
+		await runClaudeStopHook({
+			stdin: async () => JSON.stringify({ cwd }),
+			scan,
+			write,
+			commandPrefix: "'/node' '/cli.js'",
+		});
 		expect(scan).toHaveBeenCalledWith(cwd, [file]);
-		expect(JSON.parse(write.mock.calls[0][0]).decision).toBe("block");
+		const output = JSON.parse(write.mock.calls[0][0]);
+		expect(output.decision).toBe("block");
+		expect(output.reason).toContain("do not run bare aislop");
+		const feedback = JSON.parse(output.hookSpecificOutput.additionalContext);
+		expect(feedback.suggestedActions).toContainEqual(
+			expect.objectContaining({ id: "verify_fix", command: "'/node' '/cli.js' scan --changes" }),
+		);
+	});
+
+	it("uses portable guidance when the verify command uses the portable prefix", async () => {
+		const cwd = tempDir();
+		const file = path.join(cwd, "F.ts");
+		writeBaseline(cwd);
+		fs.writeFileSync(path.join(cwd, ".aislop", "session.jsonl"), `${JSON.stringify({ files: [file] })}\n`);
+		fs.writeFileSync(file, "const regression = true;\n");
+		const scan = vi.fn(async () => scanResult(cwd, true));
+		const write = vi.fn();
+
+		await runClaudeStopHook({
+			stdin: async () => JSON.stringify({ cwd }),
+			scan,
+			write,
+			commandPrefix: "aislop",
+		});
+
+		const output = JSON.parse(write.mock.calls[0][0]);
+		expect(output.reason).toContain("Use the verify_fix command in suggestedActions to confirm.");
+		expect(output.reason).not.toContain("bare aislop");
+		const feedback = JSON.parse(output.hookSpecificOutput.additionalContext);
+		expect(feedback.suggestedActions).toContainEqual(
+			expect.objectContaining({ id: "verify_fix", command: "aislop scan --changes" }),
+		);
 	});
 
 	it("clears session records without writing after a clean rescan", async () => {

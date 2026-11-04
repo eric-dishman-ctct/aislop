@@ -9,6 +9,7 @@ import {
 	powerShellQuoted,
 	selectShellBuilder,
 } from "../../src/hooks/runtime/command.js";
+import { selfCommandPrefix } from "../../src/hooks/runtime/self-command.js";
 import {
 	readHookRuntime,
 	readPreferredHookRuntime,
@@ -85,6 +86,27 @@ describe("U1 hook runtime", () => {
 		expect(selectShellBuilder("win32")).toBe(powerShellQuoted);
 		expect(selectShellBuilder("darwin")).toBe(posixQuoted);
 		expect(selectShellBuilder("linux")).toBe(posixQuoted);
+	});
+
+	it("U5 command form: uses the launch form that ran the hook", () => {
+		expect(
+			selfCommandPrefix({
+				argv: ["node", "/opt/aislop/dist/cli.js"],
+				execPath: "/opt/node/bin/node",
+				platform: "linux",
+			}),
+		).toBe("'/opt/node/bin/node' '/opt/aislop/dist/cli.js'");
+		expect(
+			selfCommandPrefix({ argv: ["node", "/usr/local/bin/aislop"], execPath: "/node" }),
+		).toBe("aislop");
+		expect(selfCommandPrefix({ argv: ["node", "cli.js"], execPath: "/node" })).toBe("aislop");
+		expect(
+			selfCommandPrefix({
+				argv: ["node", "C:\\Program Files\\aislop\\dist\\cli.js"],
+				execPath: "C:\\Program Files\\nodejs\\node.exe",
+				platform: "win32",
+			}),
+		).toBe("& 'C:\\Program Files\\nodejs\\node.exe' 'C:\\Program Files\\aislop\\dist\\cli.js'");
 	});
 
 	it("runtime file write: writes global and project schema-one files", () => {

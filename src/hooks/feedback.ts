@@ -20,7 +20,12 @@ interface Finding {
 	fix?: FindingFix;
 }
 
-type SuggestedActionId = "run_aislop_fix" | "run_aislop_fix_force" | "review_finding" | "no_action";
+type SuggestedActionId =
+	| "run_aislop_fix"
+	| "run_aislop_fix_force"
+	| "review_finding"
+	| "verify_fix"
+	| "no_action";
 
 interface SuggestedAction {
 	id: SuggestedActionId;
@@ -122,6 +127,8 @@ const buildSuggestedActions = (
 	findings: Finding[],
 	regressed: boolean,
 	delta: number | undefined,
+	touchedFiles: string[],
+	commandPrefix: string,
 ): SuggestedAction[] => {
 	const actions: SuggestedAction[] = [];
 
@@ -130,11 +137,20 @@ const buildSuggestedActions = (
 		const ruleIds = Array.from(new Set(fixableDiags.map((d) => d.rule)));
 		actions.push({
 			id: "run_aislop_fix",
-			label: `Run aislop fix to clear ${fixableDiags.length} mechanical finding${fixableDiags.length === 1 ? "" : "s"}.`,
-			command: "aislop fix",
+			label: `Run the fix command: ${commandPrefix} fix`,
+			command: `${commandPrefix} fix`,
 			rationale:
 				"These findings have deterministic fixes (formatting, unused imports, trivial comments). Running this before any manual work avoids burning agent tokens on what the CLI handles for free.",
 			ruleIds,
+		});
+	}
+
+	if (regressed) {
+		actions.push({
+			id: "verify_fix",
+			label: "Run the verify command to confirm the fix before finishing",
+			command: `${commandPrefix} scan --changes`,
+			rationale: `The hook output is already authoritative. The touched files are: ${touchedFiles.join(", ") || "<unknown>"}.`,
 		});
 	}
 
@@ -214,6 +230,7 @@ export const buildFeedback = (
 	rootDirectory: string,
 	baseline?: BaselineSnapshot | number,
 	meta?: FeedbackMeta,
+	commandPrefix = "aislop",
 ): AislopFeedback => {
 	const all = diagnostics
 		.map((d) => toFinding(d, rootDirectory))
@@ -254,6 +271,13 @@ export const buildFeedback = (
 		elided,
 		newSinceBaseline,
 		nextSteps: buildNextSteps(capped),
-		suggestedActions: buildSuggestedActions(diagnostics, capped, regressed, delta),
+		suggestedActions: buildSuggestedActions(
+			diagnostics,
+			capped,
+			regressed,
+			delta,
+			meta?.touchedFiles ?? [],
+			commandPrefix,
+		),
 	};
 };

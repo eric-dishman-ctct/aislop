@@ -49,4 +49,32 @@ describe("U1 built-CLI resolution", () => {
 			fs.unlinkSync(linkedCli);
 		}
 	});
+
+	it("U5 built CLI: puts the quoted runtime command in regression feedback", () => {
+		const cwd = tempDir();
+		const cli = path.resolve("dist/cli.js");
+		const file = path.join(cwd, "regression.ts");
+		fs.mkdirSync(path.join(cwd, ".aislop"), { recursive: true });
+		fs.writeFileSync(file, "export const value = 1;\n");
+		fs.writeFileSync(
+			path.join(cwd, ".aislop", "baseline.json"),
+			JSON.stringify({ schema: "aislop.baseline.v2", score: 101, findingFingerprints: [] }),
+		);
+		fs.writeFileSync(path.join(cwd, ".aislop", "session.jsonl"), `${JSON.stringify({ files: [file] })}\n`);
+		const fixture = JSON.parse(
+			fs.readFileSync(path.join("tests", "hooks", "fixtures", "copilot-A-regression-Stop.json"), "utf8"),
+		)[0];
+		fixture.cwd = cwd;
+		const output = execFileSync(process.execPath, [cli, "hook", "claude", "--stop"], {
+			encoding: "utf8",
+			input: JSON.stringify(fixture),
+			env: { ...process.env, HOME: tempDir() },
+		});
+		const envelope = JSON.parse(output);
+		const feedback = JSON.parse(envelope.hookSpecificOutput.additionalContext);
+		const verify = feedback.suggestedActions.find((action: { id: string }) => action.id === "verify_fix");
+		expect(verify.command.startsWith(`'${fs.realpathSync(process.execPath)}'`)).toBe(true);
+		expect(verify.command).toContain(`'${fs.realpathSync(cli)}'`);
+		expect(verify.command.endsWith("scan --changes")).toBe(true);
+	});
 });

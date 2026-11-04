@@ -130,6 +130,13 @@ describe("Copilot runtime hooks", () => {
 		}
 	});
 
+	it("writes the U5 command guidance inside the managed instruction fence", () => {
+		installCopilot(opts("project"));
+		const instructions = fs.readFileSync(resolveCopilotPaths(opts("project")).instructionsFile, "utf8");
+		const fence = instructions.match(/<!-- aislop:begin[^>]*-->([\s\S]*?)<!-- aislop:end v1 -->/);
+		expect(fence?.[1]).toContain("exact command from `suggestedActions[].command`");
+	});
+
 	it("does not rewrite unmanaged instruction or foreign hook files", () => {
 		const paths = resolveCopilotPaths(opts("project"));
 		fs.mkdirSync(path.dirname(paths.hookFile), { recursive: true });

@@ -23,4 +23,5 @@ A PostToolUse hook runs \`aislop hook claude\` after every Edit, Write, or Multi
 - Do not disable rules to pass the scan. Fix the underlying issue.
 - If a finding is a false positive, leave it and explain in your reply — do not delete the rule config.
 - The findings payload includes \`nextSteps[]\` — treat those as your plan for the turn.
+- The hook output is the authoritative scan. Run \`aislop\` only with the exact command from \`suggestedActions[].command\`. The CLI may not be on PATH in this environment.
 `;

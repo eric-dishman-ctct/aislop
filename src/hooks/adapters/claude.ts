@@ -4,6 +4,7 @@ import { buildFeedback } from "../feedback.js";
 import { resolveAgentPaths, resolveHookRoot } from "../io/project-root.js";
 import { acquireHookLock } from "../io/scan-lock.js";
 import { resolveHookFiles, runScopedScan } from "../io/scoped-scan.js";
+import { selfCommandPrefix } from "../runtime/self-command.js";
 import {
 	appendSessionFiles,
 	captureBaseline,
@@ -89,12 +90,14 @@ interface ClaudeHookDeps {
 	stdin?: () => Promise<string>;
 	write?: (s: string) => void;
 	scan?: typeof runScopedScan;
+	commandPrefix?: string;
 }
 
 export const runClaudeHook = async (deps: ClaudeHookDeps = {}): Promise<number> => {
 	const getStdin = deps.stdin ?? readStdin;
 	const write = deps.write ?? ((s: string) => process.stdout.write(s));
 	const scan = deps.scan ?? runScopedScan;
+	const commandPrefix = deps.commandPrefix ?? selfCommandPrefix();
 
 	const raw = await getStdin();
 	const input = parseClaudeStdin(raw);
@@ -118,6 +121,7 @@ export const runClaudeHook = async (deps: ClaudeHookDeps = {}): Promise<number> 
 				? { score: baseline.score, findingFingerprints: baseline.findingFingerprints }
 				: undefined,
 			{ agent: "claude", touchedFiles: files },
+			commandPrefix,
 		);
 		track({
 			event: "hook_scan_completed",
@@ -207,6 +211,7 @@ export const runClaudeStopHook = async (deps: ClaudeHookDeps = {}): Promise<numb
 	const getStdin = deps.stdin ?? readStdin;
 	const write = deps.write ?? ((s: string) => process.stdout.write(s));
 	const scan = deps.scan ?? runScopedScan;
+	const commandPrefix = deps.commandPrefix ?? selfCommandPrefix();
 
 	const raw = await getStdin();
 	const input = parseClaudeStopStdin(raw);
@@ -235,13 +240,18 @@ export const runClaudeStopHook = async (deps: ClaudeHookDeps = {}): Promise<numb
 				findingFingerprints: baseline.findingFingerprints,
 			},
 			{ agent: "claude", touchedFiles: sessionFiles },
+			commandPrefix,
 		);
 		if (!feedback.regressed) {
 			clearSessionFiles(cwd);
 			return 0;
 		}
+		const verifyGuidance =
+			commandPrefix === "aislop"
+				? "Use the verify_fix command in suggestedActions to confirm."
+				: "Use the verify_fix command in suggestedActions; do not run bare aislop, it may not be on PATH here.";
 		const envelope = renderClaudeOutput(JSON.stringify(feedback), {
-			reason: `aislop: score dropped from ${baseline.score} to ${score}. Fix the ${feedback.counts.total} finding${feedback.counts.total === 1 ? "" : "s"} before finishing.`,
+			reason: `aislop: score dropped from ${baseline.score} to ${score}. Fix the ${feedback.counts.total} finding${feedback.counts.total === 1 ? "" : "s"} before finishing. ${verifyGuidance}`,
 		});
 		write(JSON.stringify(envelope));
 		return 0;
