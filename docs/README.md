@@ -10,6 +10,7 @@ DOC026 reports a stale copy.
 | Id | Title | Status | Scope |
 | -- | ----- | ------ | ----- |
 | [foundation](plans/20261103T091028--foundation__aislop.md) | Foundation: runtime hooks for Copilot and OpenCode | in-progress | Adopt the docs system and add per-edit runtime hook adapters for the Copilot shared harness and OpenCode v2 |
+| [path-independent-hooks](plans/20261103T154737--path-independent-hooks__aislop.md) | PATH-independent hook commands | in-progress | Make every aislop hook run without PATH lookup of aislop or node, per KD-007: install-time resolver, per-host command builders, run-time resolution in plugins, a temporary-install guard, and hook doctor |
 
 ## Decisions
 
@@ -21,6 +22,7 @@ DOC026 reports a stale copy.
 | [KD-004](decisions/20261103T090950--copilot-reuses-claude-adapter__aislop.md) | Copilot reuses the Claude hook adapter | accepted | The Copilot shared harness calls aislop hook claude; no copilot runtime adapter is written |
 | [KD-005](decisions/20261103T090951--quality-gate-covers-tool-edits-only__aislop.md) | Quality gate covers tool-observed edits only | accepted | The Stop gate rescans files recorded by Edit, Write, and MultiEdit calls; shell edits to unrecorded files are not seen |
 | [KD-006](decisions/20261103T121350--fork-does-not-contribute-upstream__aislop.md) | The fork pulls from upstream and does not contribute back | accepted | eric-dishman-ctct/aislop tracks scanaislop/aislop develop as a pull-only source, and no pull requests go upstream |
+| [KD-007](decisions/20261103T140509--hook-command-embeds-node-and-cli-paths__aislop.md) | Hook commands embed the Node and CLI paths resolved at install time | accepted | Global installs write an absolute node plus cli.js command in each host's native form, project installs keep the portable string unless the user opts in, plugins resolve at run time, and the installer refuses temporary executions |
 
 ## Research
 
