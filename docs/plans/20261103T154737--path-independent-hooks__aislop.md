@@ -2,9 +2,9 @@
 type: plan
 title: "PATH-independent hook commands"
 summary: "Make every aislop hook run without PATH lookup of aislop or node, per KD-007: install-time resolver, per-host command builders, run-time resolution in plugins, a temporary-install guard, and hook doctor"
-status: in-progress
+status: complete
 created: 2026-11-03T15:47:37
-updated: 2026-11-04T13:40:46
+updated: 2026-11-04T13:44:41
 tags: ["aislop", "hooks", "path"]
 ---
 
@@ -12,7 +12,7 @@ tags: ["aislop", "hooks", "path"]
 
 ## Status
 
-In progress. U1 committed as b47169d. U2 committed as 136ed93. U3 committed as 0d5c198. U4 committed as dc345c6. Phase 5 integration done, tag pending. Accepted revision 2 after two plan review rounds. Round 2 findings are folded in as C5. Decision [KD-007](../decisions/20261103T140509--hook-command-embeds-node-and-cli-paths__aislop.md)
+In progress. U1 committed as b47169d. U2 committed as 136ed93. U3 committed as 0d5c198. U4 committed as dc345c6. Phase 5 integration done, tagged wave-hooks-v2 on 7a94e09. Plan complete. Accepted revision 2 after two plan review rounds. Round 2 findings are folded in as C5. Decision [KD-007](../decisions/20261103T140509--hook-command-embeds-node-and-cli-paths__aislop.md)
 accepted. No unit started. Baseline for all reviews: the commit that lands this plan.
 
 ## Context
@@ -140,7 +140,7 @@ Risk: LOW. Orchestrator runs existing tools and live checks.
 - [x] Live: `pnpm pack` to a tarball, then `npx --yes ./aislop-<version>.tgz hook install --claude --global` in a clean temp HOME. Assert exit 1, the hint on stderr, and no file written. Capture named ([p5-integration](../evidence/20261104-p5-integration.md))
 - [x] Live: OpenCode and pi plugins deliver feedback with the runtime file present and the nvm bin directory removed from the host `PATH`. Then rename the recorded Node path and confirm the stale line appears in the feedback (historical, U3 round 1 live checks, [p5-integration](../evidence/20261104-p5-integration.md))
 - [x] Cross-seam: one builder change fails tests in every installer that uses it ([p5-integration](../evidence/20261104-p5-integration.md))
-- [ ] Tag `wave-hooks-v2`, push with `--follow-tags`
+- [x] Tag `wave-hooks-v2` on 7a94e09, pushed with `--follow-tags`
 
 ## Mechanisms
 
