@@ -4,7 +4,7 @@ title: "PATH-independent hook commands"
 summary: "Make every aislop hook run without PATH lookup of aislop or node, per KD-007: install-time resolver, per-host command builders, run-time resolution in plugins, a temporary-install guard, and hook doctor"
 status: in-progress
 created: 2026-11-03T15:47:37
-updated: 2026-11-04T10:44:01
+updated: 2026-11-04T13:40:46
 tags: ["aislop", "hooks", "path"]
 ---
 
@@ -12,7 +12,7 @@ tags: ["aislop", "hooks", "path"]
 
 ## Status
 
-In progress. U1 committed as b47169d. U2 committed as 136ed93. U3 committed as 0d5c198. U4 committed as dc345c6. Phase 5 integration next. Accepted revision 2 after two plan review rounds. Round 2 findings are folded in as C5. Decision [KD-007](../decisions/20261103T140509--hook-command-embeds-node-and-cli-paths__aislop.md)
+In progress. U1 committed as b47169d. U2 committed as 136ed93. U3 committed as 0d5c198. U4 committed as dc345c6. Phase 5 integration done, tag pending. Accepted revision 2 after two plan review rounds. Round 2 findings are folded in as C5. Decision [KD-007](../decisions/20261103T140509--hook-command-embeds-node-and-cli-paths__aislop.md)
 accepted. No unit started. Baseline for all reviews: the commit that lands this plan.
 
 ## Context
@@ -135,11 +135,11 @@ healthy for a hook that does not run.
 
 Risk: LOW. Orchestrator runs existing tools and live checks.
 
-- [ ] Live: `hook install --copilot --global --quality-gate` on this machine with the installer-written file and no probe wrapper, VS Code full quit, one regression edit. Observable block: the transcript shows the aislop block reason and a second edit. Observable fix: `aislop scan` on the file reports no regression. Capture named
-- [ ] Live: same with `--project` default (portable) and with `--project --absolute`, confirm the written command strings
-- [ ] Live: `pnpm pack` to a tarball, then `npx --yes ./aislop-<version>.tgz hook install --claude --global` in a clean temp HOME. Assert exit 1, the hint on stderr, and no file written. Capture named
-- [ ] Live: OpenCode and pi plugins deliver feedback with the runtime file present and the nvm bin directory removed from the host `PATH`. Then rename the recorded Node path and confirm the stale line appears in the feedback
-- [ ] Cross-seam: one builder change fails tests in every installer that uses it
+- [x] Live: `hook install --copilot --global --quality-gate` on this machine with the installer-written file and no probe wrapper, VS Code full quit, one regression edit. Observable block: the transcript shows the aislop block reason and a second edit. Observable fix: `aislop scan` on the file reports no regression. Capture named ([p5-integration](../evidence/20261104-p5-integration.md))
+- [x] Live: same with `--project` default (portable) and with `--project --absolute`, confirm the written command strings ([p5-integration](../evidence/20261104-p5-integration.md))
+- [x] Live: `pnpm pack` to a tarball, then `npx --yes ./aislop-<version>.tgz hook install --claude --global` in a clean temp HOME. Assert exit 1, the hint on stderr, and no file written. Capture named ([p5-integration](../evidence/20261104-p5-integration.md))
+- [x] Live: OpenCode and pi plugins deliver feedback with the runtime file present and the nvm bin directory removed from the host `PATH`. Then rename the recorded Node path and confirm the stale line appears in the feedback (historical, U3 round 1 live checks, [p5-integration](../evidence/20261104-p5-integration.md))
+- [x] Cross-seam: one builder change fails tests in every installer that uses it ([p5-integration](../evidence/20261104-p5-integration.md))
 - [ ] Tag `wave-hooks-v2`, push with `--follow-tags`
 
 ## Mechanisms
@@ -189,9 +189,9 @@ Risk: LOW. Orchestrator runs existing tools and live checks.
 | G4 | U4 rows with a reviewer-confirmed test | 8 of 8 | 8 of 8, [u4-gates](../evidence/20261103-u4-gates.md) | [x] |
 | G5 | Full suite failures after each unit | 0 | 0 failures, 240 files, 2507 passed, 1 skipped, [u4-gates](../evidence/20261103-u4-gates.md) | [x] |
 | G6 | Self-scan score versus `wave-hooks-v1` | >= 100, 0 warnings | 100 of 100, 0 warnings, no suppressions, [u4-gates](../evidence/20261103-u4-gates.md) | [x] |
-| G7 | Live VS Code block-and-fix with the installer-written global hook, no probe wrapper | yes | | [ ] |
-| G8 | Live refusal under `npx` from a packed tarball, exit 1, no file written | yes | | [ ] |
-| G9 | Builders labelled unverified on Windows in docs | present | | [ ] |
+| G7 | Live VS Code block-and-fix with the installer-written global hook, no probe wrapper | yes | yes, run 3 after baseline capture, [p5-integration](../evidence/20261104-p5-integration.md) | [x] |
+| G8 | Live refusal under `npx` from a packed tarball, exit 1, no file written | yes | yes, exit 1, no hook file, [p5-integration](../evidence/20261104-p5-integration.md) | [x] |
+| G9 | Builders labelled unverified on Windows in docs | present | present, README.md:294 and docs/commands.md:202, [p5-integration](../evidence/20261104-p5-integration.md) | [x] |
 
 ## Review log
 
@@ -223,6 +223,10 @@ Risk: LOW. Orchestrator runs existing tools and live checks.
 | C8 | Live OpenCode checks in U3 ran on OpenCode 2.2.5, not the 2.2.4 cited by WU-2. Behaviour unchanged | U3 review round 1 | None needed |
 | C9 | U4 worker skipped per-row red-first in its first two passes (one combined red capture). Disclosed nonconformance, accepted on deletion discrimination across four review rounds. Rounds 2, 3 and the HOME-tree pin were red-first | U4 worker reports | Review log U4 rows |
 | C10 | U4 needed three blocked rounds. Reassessment (user approved) found the final block was a self-scan suppression, not a doctor defect, and split a refactor leg U4b | Review log | Closed by U4b |
+| C11 | Cross-seam: swapping `exec` and `args[0]` in `copilotExec` fails only `runtime.test.ts`. `install-copilot.test.ts:65` checks `exec` is a string, not the Node path | Phase 5 item 5 | Open, next wave |
+| C12 | The temporary-install refusal still writes the telemetry identity `.aislop/install_id` before the guard runs | Phase 5 item 3 | Open, next wave |
+| C13 | `hook install --quality-gate` does not capture a baseline. Without `.aislop/baseline.json` the gate never blocks. Two live runs produced no block for this reason | Phase 5 item 1 | Open, docs note or installer change, next wave |
+| C14 | Inside VS Code the agent cannot run bare `aislop scan` as the block message suggests, because Node is not on the VS Code PATH. The agent fixed the code from the findings alone | Phase 5 item 1 | Open, next wave |
 | C4 | Plan round 1: runtime file location, plugin temporary guard, inert doctor probe, plugin doctor execution, stale path, built-CLI test | plan review 1 | Phase 1, 3, 4 tasks and rows |
 | C3 | Copilot scans report telemetry agent `claude` (foundation C7) | wave 1 | Not in scope |
 

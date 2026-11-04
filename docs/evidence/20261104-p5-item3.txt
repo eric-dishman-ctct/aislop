@@ -1,0 +1,25 @@
+== 3 npx tarball refusal
+<tmp>.20.0.tgz
+tarball=<tmp>.20.0.tgz
+exit=126
+-- stdout:
+-- stderr:
+sh: 1: <tmp>.20.0.tgz: Permission denied
+-- files under HOME:
+-- settings exists:
+ls: cannot access '<tmp>/.claude': No such file or directory
+== 3 retry with --package
+exit=1
+-- stdout:
+-- stderr:
+Refusing to install hooks from a temporary package cache. Install aislop stably, then run hook install again. Use --force-temporary to override.
+-- non-npm files under HOME:
+<tmp>/.aislop/install_id
+(end)
+-- force:
+Warning: temporary execution will write durable hook runtime paths.
+ aislop 0.20.0  ·  the quality gate for agentic coding
+
+ Hook install
+exit=0
+'<home>/.nvm/versions/node/v25.7.0/bin/node' '<tmp>/.npm/_npx/cf1c2ee14c817848/node_modules/aislop/dist/cli.js' 'hook' 'claude'

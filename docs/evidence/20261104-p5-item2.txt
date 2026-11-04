@@ -1,0 +1,27 @@
+== 2a portable --project
+   Command  portable aislop command
+   Wrote    <tmp>/.github/hooks/aislop.json
+   Wrote    <tmp>/.github/copilot-instructions.md
+PostToolUse matcher= Edit|Write|MultiEdit command= aislop hook claude exec= None args= None
+{
+  "schema": 1,
+== 2b --project --absolute
+   Command  absolute Node and CLI paths
+   Wrote    <tmp>/.github/hooks/aislop.json
+   Skipped  <tmp>/.github/copilot-instructions.md
+-- stderr:
+Reminder: do not commit hook files with absolute machine paths.
+PostToolUse matcher= Edit|Write|MultiEdit command= None exec= <home>/.nvm/versions/node/v25.7.0/bin/node args= ['<home>/source/aislop/dist/cli.js', 'hook', 'claude']
+== 2c claude --project --absolute
+   Wrote    <tmp>/.claude/AISLOP.md
+   Wrote    <tmp>/.claude/CLAUDE.md
+PostToolUse matcher= Edit|Write|MultiEdit command= '<home>/.nvm/versions/node/v25.7.0/bin/node' '<home>/source/aislop/dist/cli.js' 'hook' 'claude' exec= None args= None
+FileChanged matcher= .aislop/config.yml|.aislop/config.yaml|.aislop/rules.yml|.aislop/rules.yaml|package.json command= '<home>/.nvm/versions/node/v25.7.0/bin/node' '<home>/source/aislop/dist/cli.js' 'hook' 'claude' '--on-file-changed' exec= None args= None
+== doctor
+Hook doctor
+
+✓ claude project PostToolUse: portable, started=true, delivered=true, timedOut=false
+✓ claude project FileChanged: portable, started=true, delivered=true, timedOut=false
+✓ copilot project PostToolUse: absolute, started=true, delivered=true, timedOut=false
+project runtime: ok, pair matches current=true
+exit=0

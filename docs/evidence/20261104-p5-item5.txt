@@ -1,0 +1,21 @@
+== X1 posixQuoted drops cliPath (shared builder)
+      1       Tests  4 failed | 241 passed (245)
+      1  FAIL  tests/hooks/install-claude.test.ts
+      1  FAIL  tests/hooks/install-cursor.test.ts
+      1  FAIL  tests/hooks/install-gemini.test.ts
+      1  FAIL  tests/hooks/runtime.test.ts
+      1  Test Files  4 failed | 19 passed (23)
+      1 ⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+== X2 copilotExec puts cliPath in exec
+      1       Tests  1 failed | 244 passed (245)
+      1  FAIL  tests/hooks/runtime.test.ts
+      1  Test Files  1 failed | 22 passed (23)
+      1 ⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+== X3 selectShellBuilder always POSIX
+      1       Tests  2 failed | 243 passed (245)
+      1  FAIL  tests/hooks/install-claude.test.ts
+      1  FAIL  tests/hooks/runtime.test.ts
+      1  Test Files  2 failed | 21 passed (23)
+      1 ⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+== restore check
+identical
