@@ -2,9 +2,9 @@
 type: plan
 title: "PATH-independent hook commands"
 summary: "Make every aislop hook run without PATH lookup of aislop or node, per KD-007: install-time resolver, per-host command builders, run-time resolution in plugins, a temporary-install guard, and hook doctor"
-status: complete
+status: in-progress
 created: 2026-11-03T15:47:37
-updated: 2026-11-04T14:24:00
+updated: 2026-11-04T14:26:27
 tags: ["aislop", "hooks", "path"]
 ---
 
@@ -12,7 +12,7 @@ tags: ["aislop", "hooks", "path"]
 
 ## Status
 
-In progress. U1 committed as b47169d. U2 committed as 136ed93. U3 committed as 0d5c198. U4 committed as dc345c6. Phase 5 integration done, tagged wave-hooks-v2 on 7a94e09. U5 committed as d0d26d8, C14 closed. Plan complete, tag wave-hooks-v2 moved to the closing docs commit. Accepted revision 2 after two plan review rounds. Round 2 findings are folded in as C5. Decision [KD-007](../decisions/20261103T140509--hook-command-embeds-node-and-cli-paths__aislop.md)
+In progress. U1 committed as b47169d. U2 committed as 136ed93. U3 committed as 0d5c198. U4 committed as dc345c6. Phase 5 integration done, tagged wave-hooks-v2 on 7a94e09. U5 committed as d0d26d8, C14 closed. Tag wave-hooks-v2 on 5e350b8. Phase 7 (U6) added for C13, in progress. Accepted revision 2 after two plan review rounds. Round 2 findings are folded in as C5. Decision [KD-007](../decisions/20261103T140509--hook-command-embeds-node-and-cli-paths__aislop.md)
 accepted. No unit started. Baseline for all reviews: the commit that lands this plan.
 
 ## Context
@@ -160,6 +160,23 @@ worked, but the user sees a tool failure.
 - [x] Live VS Code rerun from the installer-written global hook. Acceptance: the transcript has no "cannot run", "not on PATH", or "can't run the CLI" statement, and the agent verifies with the given command or finishes from the findings ([p5-integration](../evidence/20261104-p5-integration.md))
 - [x] Commit, staged by name, d0d26d8
 
+### Phase 7: baseline on install (U6, carried finding C13)
+
+Risk: LOW. One new installer step and one doctor check. A wrong baseline can block or
+not block on the first edit, it cannot break the hook command or the runtime file.
+
+Problem: `hook install --quality-gate` writes the Stop hook but no `.aislop/baseline.json`.
+Without that file the gate never reports `regressed` and never blocks, silently. Two live
+runs in Phase 5 produced no block for this reason.
+
+- [ ] `hook install` with `--quality-gate` and not `--dry-run` captures a baseline in the project cwd through the existing `captureBaseline` when `.aislop/baseline.json` is absent. An existing baseline is kept. The summary prints a `Baseline` row with the score and the path, or `kept` with the existing score
+- [ ] `--dry-run` prints the planned `Baseline` row and writes nothing
+- [ ] `hook doctor` reports `baseline: missing, quality gate inactive` as a failure (exit 1) when a Stop hook is installed for the scope and no baseline exists in the cwd, and `baseline: ok, score N` otherwise. Without a Stop hook the row is informational
+- [ ] Tests red-first per Mechanisms row, deletion checks pasted. Temp HOME and temp project, no real files
+- [ ] Docs: README.md and docs/commands.md one sentence each, and the AISLOP.md body if it mentions the baseline
+- [ ] Live check from the built CLI in a fresh temp git project: install with `--quality-gate`, make a regression edit, pipe PostToolUse and Stop payloads, assert the Stop output has `decision: block` with no manual `hook baseline` step
+- [ ] Commit, staged by name
+
 ## Mechanisms
 
 | Mechanism | Property that must hold | Literal value | Test |
@@ -199,6 +216,9 @@ worked, but the user sees a tool failure.
 | U5 command form | Absolute when the hook ran from an absolute command, portable otherwise | `process.execPath`, `process.argv[1]` basename is not `aislop` | `tests/hooks/runtime.test.ts`: U5 command form |
 | U5 verify action | A Stop block includes `verify_fix` with the touched files | `id: "verify_fix"`, `scan --changes` | `tests/hooks/feedback.test.ts`: U5 verify action |
 | U5 instruction text | Generated instructions name the rule and the fence hash changes | "run `aislop` only with the exact command from `suggestedActions`" | `tests/hooks/assets.test.ts`: U5 instruction text |
+| U6 baseline capture | Install with the gate writes a baseline only when none exists | `.aislop/baseline.json`, `captureBaseline(cwd)` | |
+| U6 dry run | `--dry-run` never writes the baseline | `dryRun` short-circuit before `captureBaseline` | |
+| U6 doctor baseline row | Missing baseline with an installed Stop hook is exit 1 | `baseline: missing, quality gate inactive` | |
 
 ## Gates
 
@@ -214,6 +234,8 @@ worked, but the user sees a tool failure.
 | G8 | Live refusal under `npx` from a packed tarball, exit 1, no file written | yes | yes, exit 1, no hook file, [p5-integration](../evidence/20261104-p5-integration.md) | [x] |
 | G10 | U5 rows with a reviewer-confirmed test | 3 of 3 | 3 of 3, round 1 mutations a to i caught, round 2 five mutations caught, [p5-integration](../evidence/20261104-p5-integration.md) | [x] |
 | G11 | Live VS Code transcript free of CLI failure statements after a block | yes | yes, agent ran the absolute verify_fix command, [p5-integration](../evidence/20261104-p5-integration.md) | [x] |
+| G12 | U6 rows with a reviewer-confirmed test | 3 of 3 | | [ ] |
+| G13 | Built-CLI fresh project blocks on the first regression after install, no manual baseline | yes | | [ ] |
 | G9 | Builders labelled unverified on Windows in docs | present | present, README.md:294 and docs/commands.md:202, [p5-integration](../evidence/20261104-p5-integration.md) | [x] |
 
 ## Review log
