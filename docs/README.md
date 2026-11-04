@@ -10,7 +10,7 @@ DOC026 reports a stale copy.
 | Id | Title | Status | Scope |
 | -- | ----- | ------ | ----- |
 | [foundation](plans/20261103T091028--foundation__aislop.md) | Foundation: runtime hooks for Copilot and OpenCode | in-progress | Adopt the docs system and add per-edit runtime hook adapters for the Copilot shared harness and OpenCode v2 |
-| [path-independent-hooks](plans/20261103T154737--path-independent-hooks__aislop.md) | PATH-independent hook commands | in-progress | Make every aislop hook run without PATH lookup of aislop or node, per KD-007: install-time resolver, per-host command builders, run-time resolution in plugins, a temporary-install guard, and hook doctor |
+| [path-independent-hooks](plans/20261103T154737--path-independent-hooks__aislop.md) | PATH-independent hook commands | complete | Make every aislop hook run without PATH lookup of aislop or node, per KD-007: install-time resolver, per-host command builders, run-time resolution in plugins, a temporary-install guard, and hook doctor |
 
 ## Decisions
 

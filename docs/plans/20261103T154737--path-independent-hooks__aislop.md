@@ -146,38 +146,38 @@ Risk: LOW. Orchestrator runs existing tools and live checks.
 
 | Mechanism | Property that must hold | Literal value | Test |
 | --- | --- | --- | --- |
-| U1 resolver realpath | Both paths are canonical and exist | `fs.realpathSync` on `process.execPath` and the cli path | `runtime.test.ts`: resolver realpath |
-| U1 temporary detection | Known cache paths are detected, normal paths are not | `_npx`, `.bun/install/cache`, `dlx`, yarn `$$` segments | `runtime.test.ts`: temporary detection |
-| U1 install refusal | A temporary execution writes no absolute command and exits 1 | exit code 1, no file written | `runtime-install.test.ts`: install refusal |
-| U1 force flag | `--force-temporary` writes anyway with a warning on stderr | warning text contains `temporary` | `runtime-install.test.ts`: force flag |
-| U1 POSIX builder | Spaces and quotes in either path survive `sh -c` | round trip through `sh -c` yields the original argv | `runtime.test.ts`: POSIX builder |
-| U1 PowerShell builder | Output starts with the call operator and quotes both paths | `& '...' '...'`, apostrophes doubled | `runtime.test.ts`: PowerShell builder |
-| U1 Copilot exec builder | No shell string, `exec` is the node path, `args[0]` is the cli path | object shape | `runtime.test.ts`: Copilot exec builder |
-| U1 builder selection | `win32` selects PowerShell, other platforms select POSIX | `selectShellBuilder` | `runtime.test.ts`: builder selection |
-| U1 runtime file write | Global install writes the home file, project install writes the project file, both with schema 1 | two paths | `runtime.test.ts`: runtime file write |
-| U1 runtime file read | Missing, invalid, and stale each return their status and never throw | three statuses | `runtime.test.ts`: runtime file read |
-| U1 built-CLI resolution | `dist/cli.js` resolves to its own realpath, through a symlink too | built test | `runtime-built.test.ts`: built-CLI resolution |
-| U2 scope default | Global absolute, project portable, unless `--absolute` | `opts.absolute` resolution table | `hook-command.test.ts`: command form; `install-claude.test.ts`: PowerShell builder |
-| U2 project reminder | `--absolute` with project scope prints the do-not-commit reminder | stderr text | `hook-command.test.ts`: project reminder |
-| U2 portable form unchanged | With `absolute: false` every installer emits the wave-1 literal | `aislop hook <agent>` | `install-{claude,cursor,gemini,copilot}.test.ts`: portable form and absolute agent args |
-| U2 Copilot exec entries | Absolute Copilot entries have `exec` and `args`, no `command` | key presence | `install-copilot.test.ts`: absolute form with exact event args |
-| U2 hash covers command | The sentinel hash changes when the written command changes | `sentinelHash` input | `install-{claude,cursor,gemini,copilot}.test.ts`: portable-to-absolute hash change |
-| U2 upgrade rewrite | Global reinstall replaces a portable entry with the absolute one | file content after | `hook-command.test.ts`: global rewrite summary; `install-copilot.test.ts`: global reinstall |
-| U2 Copilot structure kept | Absolute entry differs from the fixture only in `exec` and `args` replacing `command` | structural diff | `install-copilot.test.ts`: fixture matcher and exact args |
-| U3 branch order | `AISLOP_BIN`, then runtime file, then bare | `install-pi.test.ts` and `install-opencode.test.ts`: override wins over valid runtime, and valid project wins over valid home |
-| U3 AISLOP_BIN args | The override is spawned with `["hook", agent]` only | `install-pi.test.ts` and `install-opencode.test.ts`: valid-runtime override arguments |
-| U3 runtime file spawn | `spawn(nodePath, [cliPath, "hook", agent])` | `install-pi.test.ts` and `install-opencode.test.ts`: valid project and home runtime arguments |
-| U3 fall-through | Missing or malformed runtime file does not throw and reaches bare | `install-pi.test.ts` and `install-opencode.test.ts`: schema 2, missing node path, and missing CLI path fallbacks |
-| U3 stale line | A stale runtime file reaches bare and delivers the stale line once, also when the fallback fails or is empty | `install-pi.test.ts` and `install-opencode.test.ts`: missing node or CLI path stale feedback, failed, empty, and normal fallback |
-| U3 pi path extraction | The extension reads `event.input.path`, not another key | `install-pi.test.ts`: reads `event.input.path` instead of `event.input.file` |
-| U4 probe mode is inert | `--doctor-probe` writes no baseline, session, lock, or telemetry identity file and reads no stdin | `doctor.test.ts`: keeps built probes inert with telemetry live and creates identity for a normal hook |
-| U4 probe execution | Doctor runs the entry as written, string through the shell or `exec` without one | `doctor.test.ts`: runs a managed command and reads its probe envelope |
-| U4 started versus delivered | A process that runs but prints no probe JSON is reported started, not delivered | `doctor.test.ts`: distinguishes started, delivered, and failed spawn |
-| U4 plugin probe | Doctor drives the generated handler with a synthetic event and the probe reaches the runner through the handler | `doctor.test.ts`: executes each generated plugin argv and checks its real probe envelope |
-| U4 status marker | `hook status` shows a stale marker from the same check | `doctor.test.ts`: marks only installed agents stale through the real status path |
-| U4 stale detection | Missing nodePath or cliPath, or version mismatch, is reported stale | `doctor.test.ts`: reports stale runtime paths and a version mismatch |
-| U4 timeout | A hung hook is killed and reported | `doctor.test.ts`: kills the child at 10,000 ms on the default timeout |
-| U4 repair | Install over a stale absolute command rewrites it | `hook-command.test.ts`: stale absolute Claude command rewrite |
+| U1 resolver realpath | Both paths are canonical and exist | `fs.realpathSync` on `process.execPath` and the cli path | `tests/hooks/runtime.test.ts`: resolver realpath |
+| U1 temporary detection | Known cache paths are detected, normal paths are not | `_npx`, `.bun/install/cache`, `dlx`, yarn `$$` segments | `tests/hooks/runtime.test.ts`: temporary detection |
+| U1 install refusal | A temporary execution writes no absolute command and exits 1 | exit code 1, no file written | `tests/hooks/runtime-install.test.ts`: install refusal |
+| U1 force flag | `--force-temporary` writes anyway with a warning on stderr | warning text contains `temporary` | `tests/hooks/runtime-install.test.ts`: force flag |
+| U1 POSIX builder | Spaces and quotes in either path survive `sh -c` | round trip through `sh -c` yields the original argv | `tests/hooks/runtime.test.ts`: POSIX builder |
+| U1 PowerShell builder | Output starts with the call operator and quotes both paths | `& '...' '...'`, apostrophes doubled | `tests/hooks/runtime.test.ts`: PowerShell builder |
+| U1 Copilot exec builder | No shell string, `exec` is the node path, `args[0]` is the cli path | object shape | `tests/hooks/runtime.test.ts`: Copilot exec builder |
+| U1 builder selection | `win32` selects PowerShell, other platforms select POSIX | `selectShellBuilder` | `tests/hooks/runtime.test.ts`: builder selection |
+| U1 runtime file write | Global install writes the home file, project install writes the project file, both with schema 1 | two paths | `tests/hooks/runtime.test.ts`: runtime file write |
+| U1 runtime file read | Missing, invalid, and stale each return their status and never throw | three statuses | `tests/hooks/runtime.test.ts`: runtime file read |
+| U1 built-CLI resolution | `dist/cli.js` resolves to its own realpath, through a symlink too | built test | `tests/hooks/runtime-built.test.ts`: built-CLI resolution |
+| U2 scope default | Global absolute, project portable, unless `--absolute` | `opts.absolute` resolution table | `tests/hooks/hook-command.test.ts`: command form; tests/hooks/install-claude.test.ts: PowerShell builder |
+| U2 project reminder | `--absolute` with project scope prints the do-not-commit reminder | stderr text | `tests/hooks/hook-command.test.ts`: project reminder |
+| U2 portable form unchanged | With `absolute: false` every installer emits the wave-1 literal | `aislop hook <agent>` | `tests/hooks/install-claude.test.ts` and the cursor, gemini, copilot install tests: portable form and absolute agent args |
+| U2 Copilot exec entries | Absolute Copilot entries have `exec` and `args`, no `command` | key presence | `tests/hooks/install-copilot.test.ts`: absolute form with exact event args |
+| U2 hash covers command | The sentinel hash changes when the written command changes | `sentinelHash` input | `tests/hooks/install-claude.test.ts` and the cursor, gemini, copilot install tests: portable-to-absolute hash change |
+| U2 upgrade rewrite | Global reinstall replaces a portable entry with the absolute one | file content after | `tests/hooks/hook-command.test.ts`: global rewrite summary; tests/hooks/install-copilot.test.ts: global reinstall |
+| U2 Copilot structure kept | Absolute entry differs from the fixture only in `exec` and `args` replacing `command` | structural diff | `tests/hooks/install-copilot.test.ts`: fixture matcher and exact args |
+| U3 branch order | `AISLOP_BIN`, then runtime file, then bare | three-way `if` on `AISLOP_BIN`, runtime file, bare `aislop` | `tests/hooks/install-pi.test.ts` and tests/hooks/install-opencode.test.ts: override wins over valid runtime, and valid project wins over valid home |
+| U3 AISLOP_BIN args | The override is spawned with `["hook", agent]` only | `["hook", agent]` | `tests/hooks/install-pi.test.ts` and tests/hooks/install-opencode.test.ts: valid-runtime override arguments |
+| U3 runtime file spawn | `spawn(nodePath, [cliPath, "hook", agent])` | `[cliPath, "hook", agent]` | `tests/hooks/install-pi.test.ts` and tests/hooks/install-opencode.test.ts: valid project and home runtime arguments |
+| U3 fall-through | Missing or malformed runtime file does not throw and reaches bare | inline schema, `nodePath`, `cliPath` checks, no throw | `tests/hooks/install-pi.test.ts` and tests/hooks/install-opencode.test.ts: schema 2, missing node path, and missing CLI path fallbacks |
+| U3 stale line | A stale runtime file reaches bare and delivers the stale line once, also when the fallback fails or is empty | `aislop: hook runtime stale, run aislop hook install` | `tests/hooks/install-pi.test.ts` and tests/hooks/install-opencode.test.ts: missing node or CLI path stale feedback, failed, empty, and normal fallback |
+| U3 pi path extraction | The extension reads `event.input.path`, not another key | `event.input.path` | `tests/hooks/install-pi.test.ts`: reads `event.input.path` instead of `event.input.file` |
+| U4 probe mode is inert | `--doctor-probe` writes no baseline, session, lock, or telemetry identity file and reads no stdin | `--doctor-probe`, schema `aislop.hook.probe.v1` | `tests/hooks/doctor.test.ts`: keeps built probes inert with telemetry live and creates identity for a normal hook |
+| U4 probe execution | Doctor runs the entry as written, string through the shell or `exec` without one | `command` through `sh -c`, `exec` plus `args` without a shell | `tests/hooks/doctor.test.ts`: runs a managed command and reads its probe envelope |
+| U4 started versus delivered | A process that runs but prints no probe JSON is reported started, not delivered | `started`, `delivered`, `exitCode` fields, nonzero exit is never delivered | `tests/hooks/doctor.test.ts`: distinguishes started, delivered, and failed spawn |
+| U4 plugin probe | Doctor drives the generated handler with a synthetic event and the probe reaches the runner through the handler | injected runner receives the handler argv plus `--doctor-probe` | `tests/hooks/doctor.test.ts`: executes each generated plugin argv and checks its real probe envelope |
+| U4 status marker | `hook status` shows a stale marker from the same check | `stale` marker on installed agents in the affected scope only | `tests/hooks/doctor.test.ts`: marks only installed agents stale through the real status path |
+| U4 stale detection | Missing nodePath or cliPath, or version mismatch, is reported stale | `nodePath` exists, `cliPath` exists, `version` equals current | `tests/hooks/doctor.test.ts`: reports stale runtime paths and a version mismatch |
+| U4 timeout | A hung hook is killed and reported | 10000 ms default, `child.kill()` | `tests/hooks/doctor.test.ts`: kills the child at 10,000 ms on the default timeout |
+| U4 repair | Install over a stale absolute command rewrites it | global reinstall rewrites a stale absolute entry, summary names the rewrite | `tests/hooks/hook-command.test.ts`: stale absolute Claude command rewrite |
 
 ## Gates
 
