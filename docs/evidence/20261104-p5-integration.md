@@ -78,3 +78,24 @@ string, not the Node path (C11).
 ## Item 6, G9
 
 README.md:294 and docs/commands.md:202 both say "Windows builders are unverified."
+
+## Phase 6, U5 live VS Code rerun (G11)
+
+Same host and hook file as item 1, rebuilt `dist/cli.js` with U5, baseline 100, same
+regression prompt. `.aislop/session.jsonl` recorded hook hits at 14:20:55 and 14:21:28
+local, with the Stop block between them. Copilot's transcript: "Found the hook's node and
+CLI paths. The verify_fix command resolves to `<node> <cli.js> scan --changes`. First,
+confirm the two findings on the current file, then fix." It ran the absolute command
+(tool line "Run verify_fix command to list current findings"), confirmed the two findings,
+edited, and finished. The transcript has no "cannot run", "not on PATH", or "can't run the
+CLI" statement. The final file scans 98/100 with 0 findings.
+
+Replay of the Stop block from a shell with the absolute launch: reason
+`aislop: score dropped from 100 to 69. Fix the 2 findings before finishing. Use the
+verify_fix command in suggestedActions; do not run bare aislop, it may not be on PATH
+here.` and `verify_fix` command `'<node>' '<cli.js>' scan --changes`.
+
+Observation, not a finding: before it read the hook file, Copilot ran one grep over the
+aislop source to learn how the prefix is built. Harmless.
+
+Result: G11 yes. C14 closed.

@@ -2,9 +2,9 @@
 type: plan
 title: "PATH-independent hook commands"
 summary: "Make every aislop hook run without PATH lookup of aislop or node, per KD-007: install-time resolver, per-host command builders, run-time resolution in plugins, a temporary-install guard, and hook doctor"
-status: in-progress
+status: complete
 created: 2026-11-03T15:47:37
-updated: 2026-11-04T13:59:00
+updated: 2026-11-04T14:24:00
 tags: ["aislop", "hooks", "path"]
 ---
 
@@ -12,7 +12,7 @@ tags: ["aislop", "hooks", "path"]
 
 ## Status
 
-In progress. U1 committed as b47169d. U2 committed as 136ed93. U3 committed as 0d5c198. U4 committed as dc345c6. Phase 5 integration done, tagged wave-hooks-v2 on 7a94e09. Phase 6 (U5) added for C14, in progress. Accepted revision 2 after two plan review rounds. Round 2 findings are folded in as C5. Decision [KD-007](../decisions/20261103T140509--hook-command-embeds-node-and-cli-paths__aislop.md)
+In progress. U1 committed as b47169d. U2 committed as 136ed93. U3 committed as 0d5c198. U4 committed as dc345c6. Phase 5 integration done, tagged wave-hooks-v2 on 7a94e09. U5 committed as d0d26d8, C14 closed. Plan complete, tag wave-hooks-v2 moved to the closing docs commit. Accepted revision 2 after two plan review rounds. Round 2 findings are folded in as C5. Decision [KD-007](../decisions/20261103T140509--hook-command-embeds-node-and-cli-paths__aislop.md)
 accepted. No unit started. Baseline for all reviews: the commit that lands this plan.
 
 ## Context
@@ -152,13 +152,13 @@ Problem: in the live VS Code run the agent tried to run bare `aislop` to confirm
 could not find Node, and wrote "No Node runtime is on PATH" in the transcript. The hook
 worked, but the user sees a tool failure.
 
-- [ ] `suggestedActions[].command` uses the absolute form `'<node>' '<cli>' fix` when the hook process itself ran from an absolute command, and `aislop fix` otherwise. The hook reads `process.execPath` and `process.argv[1]`. It does not read the runtime file
-- [ ] The Stop block adds a `verify_fix` action with the command `<form> scan` limited to the touched files, so the agent has a command that works where the hook works
-- [ ] The generated instructions (AISLOP.md body and the Copilot fence) tell the agent: the hook output is the authoritative scan, run `aislop` only with the exact command from `suggestedActions[].command`, the CLI may not be on PATH
-- [ ] Tests red-first per Mechanisms row, deletion checks pasted
-- [ ] Docs: README.md and docs/commands.md one sentence each
-- [ ] Live VS Code rerun from the installer-written global hook. Acceptance: the transcript has no "cannot run", "not on PATH", or "can't run the CLI" statement, and the agent verifies with the given command or finishes from the findings
-- [ ] Commit, staged by name
+- [x] `suggestedActions[].command` uses the absolute form `'<node>' '<cli>' fix` when the hook process itself ran from an absolute command, and `aislop fix` otherwise. The hook reads `process.execPath` and `process.argv[1]`. It does not read the runtime file ([p5-integration](../evidence/20261104-p5-integration.md))
+- [x] The Stop block adds a `verify_fix` action with the command `<form> scan --changes`, so the agent has a command that works where the hook works ([p5-integration](../evidence/20261104-p5-integration.md))
+- [x] The generated instructions (AISLOP.md body and the Copilot fence) tell the agent: the hook output is the authoritative scan, run `aislop` only with the exact command from `suggestedActions[].command`, the CLI may not be on PATH ([p5-integration](../evidence/20261104-p5-integration.md))
+- [x] Tests red-first per Mechanisms row, deletion checks pasted ([p5-integration](../evidence/20261104-p5-integration.md))
+- [x] Docs: README.md and docs/commands.md one sentence each ([p5-integration](../evidence/20261104-p5-integration.md))
+- [x] Live VS Code rerun from the installer-written global hook. Acceptance: the transcript has no "cannot run", "not on PATH", or "can't run the CLI" statement, and the agent verifies with the given command or finishes from the findings ([p5-integration](../evidence/20261104-p5-integration.md))
+- [x] Commit, staged by name, d0d26d8
 
 ## Mechanisms
 
@@ -196,9 +196,9 @@ worked, but the user sees a tool failure.
 | U4 stale detection | Missing nodePath or cliPath, or version mismatch, is reported stale | `nodePath` exists, `cliPath` exists, `version` equals current | `tests/hooks/doctor.test.ts`: reports stale runtime paths and a version mismatch |
 | U4 timeout | A hung hook is killed and reported | 10000 ms default, `child.kill()` | `tests/hooks/doctor.test.ts`: kills the child at 10,000 ms on the default timeout |
 | U4 repair | Install over a stale absolute command rewrites it | global reinstall rewrites a stale absolute entry, summary names the rewrite | `tests/hooks/hook-command.test.ts`: stale absolute Claude command rewrite |
-| U5 command form | Absolute when the hook ran from an absolute command, portable otherwise | `process.execPath`, `process.argv[1]` basename is not `aislop` | |
-| U5 verify action | A Stop block includes `verify_fix` with the touched files | `id: "verify_fix"` | |
-| U5 instruction text | Generated instructions name the rule and the fence hash changes | "run `aislop` only with the exact command from `suggestedActions`" | |
+| U5 command form | Absolute when the hook ran from an absolute command, portable otherwise | `process.execPath`, `process.argv[1]` basename is not `aislop` | `tests/hooks/runtime.test.ts`: U5 command form |
+| U5 verify action | A Stop block includes `verify_fix` with the touched files | `id: "verify_fix"`, `scan --changes` | `tests/hooks/feedback.test.ts`: U5 verify action |
+| U5 instruction text | Generated instructions name the rule and the fence hash changes | "run `aislop` only with the exact command from `suggestedActions`" | `tests/hooks/assets.test.ts`: U5 instruction text |
 
 ## Gates
 
@@ -212,8 +212,8 @@ worked, but the user sees a tool failure.
 | G6 | Self-scan score versus `wave-hooks-v1` | >= 100, 0 warnings | 100 of 100, 0 warnings, no suppressions, [u4-gates](../evidence/20261103-u4-gates.md) | [x] |
 | G7 | Live VS Code block-and-fix with the installer-written global hook, no probe wrapper | yes | yes, run 3 after baseline capture, [p5-integration](../evidence/20261104-p5-integration.md) | [x] |
 | G8 | Live refusal under `npx` from a packed tarball, exit 1, no file written | yes | yes, exit 1, no hook file, [p5-integration](../evidence/20261104-p5-integration.md) | [x] |
-| G10 | U5 rows with a reviewer-confirmed test | 3 of 3 | | [ ] |
-| G11 | Live VS Code transcript free of CLI failure statements after a block | yes | | [ ] |
+| G10 | U5 rows with a reviewer-confirmed test | 3 of 3 | 3 of 3, round 1 mutations a to i caught, round 2 five mutations caught, [p5-integration](../evidence/20261104-p5-integration.md) | [x] |
+| G11 | Live VS Code transcript free of CLI failure statements after a block | yes | yes, agent ran the absolute verify_fix command, [p5-integration](../evidence/20261104-p5-integration.md) | [x] |
 | G9 | Builders labelled unverified on Windows in docs | present | present, README.md:294 and docs/commands.md:202, [p5-integration](../evidence/20261104-p5-integration.md) | [x] |
 
 ## Review log
@@ -232,6 +232,8 @@ worked, but the user sees a tool failure.
 | U4 | 2 | BLOCK: nonzero exit with a valid envelope counted as delivered, wrong-schema fixture never printed, status regex matched later agents. Both round-1 Class A fixed and proven on the built CLI | 1 | 2 | 2026-11-04 |
 | U4 | 3 | BLOCK (narrow, user-approved after reassessment): the three scoped items pass, new finding that a complexity/file-too-large directive on src/commands/hook.ts hid a real 456-line warning | 1 | 1 | 2026-11-04 |
 | U4b | 1 | PASS: status rendering moved to src/hooks/status-render.ts, all directives removed, help and output byte-neutral, four U4 mutations still caught. Non-blocking: inert-probe test checked identity file only, HOME-tree assertion added afterwards red-first (no further round) | 0 | 1 | 2026-11-04 |
+| U5 | 1 | BLOCK: Stop reason contradicted the portable verify command, Copilot fence sentence unpinned |
+| U5 | 2 | PASS, zero findings, five mutations caught |
 | plan | 2 | BLOCK, three findings folded into the text and C5. Round cap reached, plan accepted by the user with C5 mandatory | 3 | 0 | 2026-11-03 |
 
 ## Carried findings
@@ -249,7 +251,7 @@ worked, but the user sees a tool failure.
 | C11 | Cross-seam: swapping `exec` and `args[0]` in `copilotExec` fails only `runtime.test.ts`. `install-copilot.test.ts:65` checks `exec` is a string, not the Node path | Phase 5 item 5 | Open, next wave |
 | C12 | The temporary-install refusal still writes the telemetry identity `.aislop/install_id` before the guard runs | Phase 5 item 3 | Open, next wave |
 | C13 | `hook install --quality-gate` does not capture a baseline. Without `.aislop/baseline.json` the gate never blocks. Two live runs produced no block for this reason | Phase 5 item 1 | Open, docs note or installer change, next wave |
-| C14 | Inside VS Code the agent cannot run bare `aislop scan` as the block message suggests, because Node is not on the VS Code PATH. The agent fixed the code from the findings alone | Phase 5 item 1 | Open, next wave |
+| C14 | Inside VS Code the agent cannot run bare `aislop scan` as the block message suggests, because Node is not on the VS Code PATH. The agent fixed the code from the findings alone | Phase 5 item 1 | Closed by U5, G11 |
 | C4 | Plan round 1: runtime file location, plugin temporary guard, inert doctor probe, plugin doctor execution, stale path, built-CLI test | plan review 1 | Phase 1, 3, 4 tasks and rows |
 | C3 | Copilot scans report telemetry agent `claude` (foundation C7) | wave 1 | Not in scope |
 
