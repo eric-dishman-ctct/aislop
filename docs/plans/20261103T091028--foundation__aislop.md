@@ -4,7 +4,7 @@ title: "Foundation: runtime hooks for Copilot and OpenCode"
 summary: "Adopt the docs system and add per-edit runtime hook adapters for the Copilot shared harness and OpenCode v2"
 status: in-progress
 created: 2026-11-03T09:10:28
-updated: 2026-11-03T14:04:56
+updated: 2026-11-04T09:32:09
 tags: ["aislop", "hooks", "copilot", "opencode"]
 ---
 
@@ -174,7 +174,7 @@ Risk: LOW. Orchestrator runs existing tools. One reviewer for the cross-seam evi
 | G7 | WU-2 Mechanisms rows with a reviewer-confirmed deletion-discriminating test | 13 of 13 | 13 of 13: [evidence](../evidence/20261103-wu2-gates.md) | [x] |
 | G8 | Live OpenCode delivery: model quotes feedback | yes | yes, score 73/100 quoted: [evidence](../evidence/20261103-wu2-gates.md) | [x] |
 | G9 | Live Copilot CLI: PostToolUse and Stop both fire from the generated file | yes | yes, and Stop block honoured: [evidence](../evidence/20261103-wu3-integration.md) | [x] |
-| G10 | Cross-seam mutations with exactly one failing test each | 4 of 4 | 3 of 4, X2 pi extension has no test, pre-existing (C13): [evidence](../evidence/20261103-wu3-integration.md) | [ ] |
+| G10 | Cross-seam mutations with exactly one failing test each | 4 of 4 | 4 of 4 after 0d5c198 added the pi path-key test (C13 closed): [evidence](../evidence/20261103-wu3-integration.md), [u3-gates](../evidence/20261103-u3-gates.md) | [x] |
 
 ## Review log
 
@@ -209,7 +209,7 @@ their findings bind Phases 2 and 3.
 | C9 | Native camelCase Copilot payload unsupported | KD-004 | Documented in Phase 2 docs task |
 | C10 | Stop unit test pins the recorded file list with a stubbed scanner, not real rescan of changed content | WU-1 round 2 | Phase 4 live Copilot check |
 | C12 | OpenCode resident server does not reload a newly installed project plugin. A fresh process is needed. VS Code Copilot runtime behaves the same and needs a full VS Code quit ([R-003](../research/20261103T132420--hook-command-environment-probes__aislop.md)) | WU-2 live check, R-003 | Documented in Phase 3 docs task and docs/commands.md |
-| C13 | The pi extension's path extraction (`event.input.path` in `install/pi.ts`) has no discriminating test. Pre-existing, untouched by this plan | WU-3 cross-seam X2 | Open. Candidate for a follow-up unit |
+| C13 | The pi extension's path extraction (`event.input.path` in `install/pi.ts`) has no discriminating test. Pre-existing, untouched by this plan | WU-3 cross-seam X2 | Closed by 0d5c198 (pi path key test) |
 | C14 | VS Code's hook process has a minimal PATH, so `aislop hook claude` can fail to resolve `aislop` or `node` while the CLI works. Silent in VS Code. Survey in [R-002](../research/20261103T130449--hook-command-binary-resolution__aislop.md), probes in [R-003](../research/20261103T132420--hook-command-environment-probes__aislop.md) | [R-001](../research/20261103T115650--vscode-copilot-hook-delivery__aislop.md) | Docs note in this wave. A later KD weighs absolute binary paths in hook commands |
 | C11 | README and docs/commands.md STE scores 2.67 and 3.14, above the 2.5 flavored target, from pre-existing text | WU-1 worker | Not in scope, upstream prose |
 
