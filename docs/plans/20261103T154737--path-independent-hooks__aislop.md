@@ -4,7 +4,7 @@ title: "PATH-independent hook commands"
 summary: "Make every aislop hook run without PATH lookup of aislop or node, per KD-007: install-time resolver, per-host command builders, run-time resolution in plugins, a temporary-install guard, and hook doctor"
 status: in-progress
 created: 2026-11-03T15:47:37
-updated: 2026-11-04T09:03:04
+updated: 2026-11-04T09:31:01
 tags: ["aislop", "hooks", "path"]
 ---
 
@@ -12,7 +12,7 @@ tags: ["aislop", "hooks", "path"]
 
 ## Status
 
-In progress. U1 committed as b47169d. U2 committed as 136ed93. Accepted revision 2 after two plan review rounds. Round 2 findings are folded in as C5. Decision [KD-007](../decisions/20261103T140509--hook-command-embeds-node-and-cli-paths__aislop.md)
+In progress. U1 committed as b47169d. U2 committed as 136ed93. U3 passed review, commit pending. Accepted revision 2 after two plan review rounds. Round 2 findings are folded in as C5. Decision [KD-007](../decisions/20261103T140509--hook-command-embeds-node-and-cli-paths__aislop.md)
 accepted. No unit started. Baseline for all reviews: the commit that lands this plan.
 
 ## Context
@@ -101,16 +101,16 @@ never runs, or a committed project file that breaks teammates.
 Risk: LOW. One worker, one execution reviewer. Consequence of a defect: a plugin that
 spawns the wrong binary or falls through to `PATH` silently.
 
-- [ ] Generated pi extension and OpenCode plugin resolve at run time: `AISLOP_BIN` as an executable branch with `["hook", agent]` args, else `hook-runtime.json` pair as `spawn(nodePath, [cliPath, "hook", agent])`, else `spawn("aislop", ["hook", agent])`
-- [ ] Plugins read the runtime file in the same order: project `.aislop/hook-runtime.json` under the host's project directory, then `~/.aislop/hook-runtime.json`. The generated source inlines the same validation (schema, string paths, existence), because the plugin cannot import aislop
-- [ ] A `missing`, `invalid`, or `stale` result falls through to bare `aislop`. No branch throws
-- [ ] A `stale` result delivers one line `aislop: hook runtime stale, run aislop hook install` to the model even when the fallback spawn fails or prints nothing. The stale line is assembled before the spawn result is inspected, not inside the success path (`src/hooks/install/pi.ts:80-89`, `src/hooks/install/opencode.ts:84-96` return early today). Tests cover: stale plus failed fallback, stale plus empty feedback, stale plus normal feedback
-- [ ] A missing or unparsable file falls through
-- [ ] Executed-plugin tests drive all three branches plus the stale case with injected spawn and a temp filesystem
-- [ ] The pi extension test gains a discriminating assertion on `event.input.path` extraction (foundation C13)
-- [ ] Tests red-first for every Mechanisms row marked U3, `Test` column added
-- [ ] Gates captured
-- [ ] Independent review PASS
+- [x] Generated pi extension and OpenCode plugin resolve at run time: `AISLOP_BIN` as an executable branch with `["hook", agent]` args, else `hook-runtime.json` pair as `spawn(nodePath, [cliPath, "hook", agent])`, else `spawn("aislop", ["hook", agent])` ([u3-gates](../evidence/20261103-u3-gates.md))
+- [x] Plugins read the runtime file in the same order: project `.aislop/hook-runtime.json` under the host's project directory, then `~/.aislop/hook-runtime.json`. The generated source inlines the same validation (schema, string paths, existence), because the plugin cannot import aislop ([u3-gates](../evidence/20261103-u3-gates.md))
+- [x] A `missing`, `invalid`, or `stale` result falls through to bare `aislop`. No branch throws ([u3-gates](../evidence/20261103-u3-gates.md))
+- [x] A `stale` result delivers one line `aislop: hook runtime stale, run aislop hook install` to the model even when the fallback spawn fails or prints nothing. The stale line is assembled before the spawn result is inspected, not inside the success path (`src/hooks/install/pi.ts:80-89`, `src/hooks/install/opencode.ts:84-96` return early today). Tests cover: stale plus failed fallback, stale plus empty feedback, stale plus normal feedback ([u3-gates](../evidence/20261103-u3-gates.md))
+- [x] A missing or unparsable file falls through ([u3-gates](../evidence/20261103-u3-gates.md))
+- [x] Executed-plugin tests drive all three branches plus the stale case with injected spawn and a temp filesystem ([u3-gates](../evidence/20261103-u3-gates.md))
+- [x] The pi extension test gains a discriminating assertion on `event.input.path` extraction (foundation C13) ([u3-gates](../evidence/20261103-u3-gates.md))
+- [x] Tests red-first for every Mechanisms row marked U3, `Test` column added ([u3-gates](../evidence/20261103-u3-gates.md))
+- [x] Gates captured ([u3-gates](../evidence/20261103-u3-gates.md))
+- [x] Independent review PASS ([u3-gates](../evidence/20261103-u3-gates.md))
 - [x] Commit b47169d
 
 ### Phase 4: hook doctor (U4)
@@ -164,12 +164,12 @@ Risk: LOW. Orchestrator runs existing tools and live checks.
 | U2 hash covers command | The sentinel hash changes when the written command changes | `sentinelHash` input | `install-{claude,cursor,gemini,copilot}.test.ts`: portable-to-absolute hash change |
 | U2 upgrade rewrite | Global reinstall replaces a portable entry with the absolute one | file content after | `hook-command.test.ts`: global rewrite summary; `install-copilot.test.ts`: global reinstall |
 | U2 Copilot structure kept | Absolute entry differs from the fixture only in `exec` and `args` replacing `command` | structural diff | `install-copilot.test.ts`: fixture matcher and exact args |
-| U3 branch order | `AISLOP_BIN`, then runtime file, then bare | three injected-spawn tests |
-| U3 AISLOP_BIN args | The override is spawned with `["hook", agent]` only | argv shape |
-| U3 runtime file spawn | `spawn(nodePath, [cliPath, "hook", agent])` | argv shape |
-| U3 fall-through | Missing or malformed runtime file does not throw and reaches bare | no throw, bare spawn |
-| U3 stale line | A stale runtime file reaches bare and delivers the stale line once, also when the fallback fails or is empty | message text in three cases |
-| U3 pi path extraction | The extension reads `event.input.path`, not another key | foundation C13 |
+| U3 branch order | `AISLOP_BIN`, then runtime file, then bare | `install-pi.test.ts` and `install-opencode.test.ts`: override wins over valid runtime, and valid project wins over valid home |
+| U3 AISLOP_BIN args | The override is spawned with `["hook", agent]` only | `install-pi.test.ts` and `install-opencode.test.ts`: valid-runtime override arguments |
+| U3 runtime file spawn | `spawn(nodePath, [cliPath, "hook", agent])` | `install-pi.test.ts` and `install-opencode.test.ts`: valid project and home runtime arguments |
+| U3 fall-through | Missing or malformed runtime file does not throw and reaches bare | `install-pi.test.ts` and `install-opencode.test.ts`: schema 2, missing node path, and missing CLI path fallbacks |
+| U3 stale line | A stale runtime file reaches bare and delivers the stale line once, also when the fallback fails or is empty | `install-pi.test.ts` and `install-opencode.test.ts`: missing node or CLI path stale feedback, failed, empty, and normal fallback |
+| U3 pi path extraction | The extension reads `event.input.path`, not another key | `install-pi.test.ts`: reads `event.input.path` instead of `event.input.file` |
 | U4 probe mode is inert | `--doctor-probe` writes no baseline, session, lock, or telemetry identity file and reads no stdin | HOME and project trees unchanged |
 | U4 probe execution | Doctor runs the entry as written, string through the shell or `exec` without one | injected runner receives the file's entry |
 | U4 started versus delivered | A process that runs but prints no probe JSON is reported started, not delivered | two report fields |
@@ -185,7 +185,7 @@ Risk: LOW. Orchestrator runs existing tools and live checks.
 | --- | --- | --- | --- | --- |
 | G1 | U1 Mechanisms rows with a reviewer-confirmed deletion-discriminating test | 11 of 11 | 11 of 11, [u1-gates](../evidence/20261103-u1-gates.md) | [x] |
 | G2 | U2 rows with a reviewer-confirmed test | 7 of 7 | 7 of 7, [u2-gates](../evidence/20261103-u2-gates.md) | [x] |
-| G3 | U3 rows with a reviewer-confirmed test | 6 of 6 | | [ ] |
+| G3 | U3 rows with a reviewer-confirmed test | 6 of 6 | 6 of 6, [u3-gates](../evidence/20261103-u3-gates.md) | [x] |
 | G4 | U4 rows with a reviewer-confirmed test | 8 of 8 | | [ ] |
 | G5 | Full suite failures after each unit | 0 | | [ ] |
 | G6 | Self-scan score versus `wave-hooks-v1` | >= 100, 0 warnings | | [ ] |
@@ -203,6 +203,8 @@ Risk: LOW. Orchestrator runs existing tools and live checks.
 | U1 | 2 | PASS, all eight round-1 survivors fail named tests, zero findings | 0 | 0 | 2026-11-03 |
 | U2 | 1 | BLOCK: summary silent on portable-to-absolute rewrite, hash and structure tests not discriminating per installer, win32 and agent-arg builders unpinned | 1 | 1 | 2026-11-04 |
 | U2 | 2 | PASS, all eleven round-1 survivors fail named tests, summary idempotent on the built CLI | 0 | 0 | 2026-11-04 |
+| U3 | 1 | BLOCK: live OpenCode and pi runtime branch and stale line proven, but four wrong-code mutations survived both suites (branch order, home over project, schema 2, missing nodePath alone) | 1 | 0 | 2026-11-04 |
+| U3 | 2 | PASS, five mutations caught in both suites, source byte-identical to round 1 | 0 | 0 | 2026-11-04 |
 | plan | 2 | BLOCK, three findings folded into the text and C5. Round cap reached, plan accepted by the user with C5 mandatory | 3 | 0 | 2026-11-03 |
 
 ## Carried findings
@@ -214,6 +216,7 @@ Risk: LOW. Orchestrator runs existing tools and live checks.
 | C5 | Plan round 2: plugin doctor must drive the handler code, stale line must survive failed or empty fallback, probe must skip pre-parse telemetry writes. Mandatory in U3 and U4 briefs | plan review 2 | Phase 3 and 4 tasks and rows |
 | C6 | U2 worker round 1 red captures were taken as deletion failures, not before the code change. Disclosed nonconformance, accepted on the strength of two reviewer deletion rounds. Round 2 captures were red-first | U2 worker report | Review log U2 rows |
 | C7 | README and docs/commands.md STE 2.69 per 100 words (orchestrator lint), same cause as foundation C11: required literal command text. Out of scope | U2 worker report | None needed |
+| C8 | Live OpenCode checks in U3 ran on OpenCode 2.2.5, not the 2.2.4 cited by WU-2. Behaviour unchanged | U3 review round 1 | None needed |
 | C4 | Plan round 1: runtime file location, plugin temporary guard, inert doctor probe, plugin doctor execution, stale path, built-CLI test | plan review 1 | Phase 1, 3, 4 tasks and rows |
 | C3 | Copilot scans report telemetry agent `claude` (foundation C7) | wave 1 | Not in scope |
 

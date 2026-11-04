@@ -198,7 +198,7 @@ Session review commands:
 
 Agent shortcut flags: `--claude`, `--cursor`, `--gemini`, `--pi`, `--codex`, `--windsurf`, `--cline`, `--kilocode`, `--antigravity`, `--copilot`, `--opencode`.
 
-Global installs use absolute Node and CLI paths. Project installs use portable commands. Use `--absolute` for project machine paths. Do not commit the hook file. Run `aislop hook install` after you upgrade Node or aislop. Windows builders are unverified.
+Global installs use absolute Node and CLI paths. Project installs use portable commands. Use `--absolute` for project machine paths. Do not commit the hook file. Run `aislop hook install` after you upgrade Node or aislop. Windows builders are unverified. The pi and OpenCode plugins use `AISLOP_BIN`, then the project runtime file, then the home runtime file, then bare `aislop`. A stale runtime file adds `aislop: hook runtime stale, run aislop hook install` to the feedback.
 
 Copilot runtime hooks need VS Code 1.144.0 or Copilot CLI 1.0.105 or later, and a trusted folder. The hook command is `aislop hook claude`. The VS Code hook process does not use the Node path that nvm adds during shell startup. If hooks are silent in VS Code, use the global absolute install. After `aislop hook install`, quit and relaunch VS Code. A window reload does not load a changed hook file.
 

@@ -27,11 +27,40 @@ export const OPENCODE_PLUGIN_SOURCE = `// ${MANAGED_MARKER}. Do not edit by hand
 // Reinstall with: aislop hook install --opencode
 import { Plugin } from "@opencode/plugin";
 import { spawn } from "node:child_process";
-import { resolve } from "${"node:" + "path"}";
+import fs from "node:fs";
+import os from "node:os";
+import { join, resolve } from "${"node:" + "path"}";
 
 const pending = new Map();
 const ttlMs = 600000;
 const spawnProcess = globalThis.__aislopSpawn || spawn;
+const staleRuntimeMessage = "aislop: hook runtime stale, run aislop hook install";
+
+const readRuntime = (dir) => {
+	try {
+		const runtimePath = join(dir, ".aislop", "hook-runtime.json");
+		if (!fs.existsSync(runtimePath)) return { status: "missing" };
+		const runtime = JSON.parse(fs.readFileSync(runtimePath, "utf-8"));
+		if (
+			runtime?.schema !== 1 ||
+			typeof runtime.nodePath !== "string" ||
+			typeof runtime.cliPath !== "string"
+		) return { status: "invalid" };
+		if (!fs.existsSync(runtime.nodePath) || !fs.existsSync(runtime.cliPath)) return { status: "stale" };
+		return { status: "ok", runtime };
+	} catch {
+		return { status: "invalid" };
+	}
+};
+
+const readPreferredRuntime = (projectDir) => {
+	try {
+		const project = readRuntime(projectDir);
+		return project.status === "missing" ? readRuntime(os.homedir()) : project;
+	} catch {
+		return { status: "invalid" };
+	}
+};
 
 const runHook = (bin, args, input, cwd) =>
 	new Promise((resolveResult) => {
@@ -81,19 +110,30 @@ export default Plugin.define({
 				const rawPaths = targets.length > 0 ? targets : typeof inputPath === "string" ? [inputPath] : [];
 				if (rawPaths.length === 0) return;
 				const filePaths = rawPaths.map((filePath) => resolve(ctx.location.directory, filePath));
+				const override = process.env.AISLOP_BIN;
+				const runtime = override ? { status: "missing" } : readPreferredRuntime(ctx.location.directory);
+				const feedback = runtime.status === "stale" ? [staleRuntimeMessage] : [];
+				const [bin, args] = override
+					? [override, ["hook", "opencode"]]
+					: runtime.status === "ok"
+						? [runtime.runtime.nodePath, [runtime.runtime.cliPath, "hook", "opencode"]]
+						: ["aislop", ["hook", "opencode"]];
 				const stdout = await runHook(
-					process.env.AISLOP_BIN || "aislop",
-					["hook", "opencode"],
+					bin,
+					args,
 					JSON.stringify({ cwd: ctx.location.directory, file_paths: filePaths, tool_name: event.tool }),
 					ctx.location.directory,
 				);
-				if (!stdout) return;
-				let out;
-				try { out = JSON.parse(stdout); } catch { return; }
-				if (typeof out?.message !== "string" || out.message.trim().length === 0) return;
+				if (stdout) {
+					try {
+						const out = JSON.parse(stdout);
+						if (typeof out?.message === "string" && out.message.trim().length > 0) feedback.push(out.message);
+					} catch {}
+				}
+				if (feedback.length === 0) return;
 				const current = pending.get(event.sessionID);
 				const texts = current && Date.now() - current.at < ttlMs ? current.texts : [];
-				texts.push("AISLOP FEEDBACK:\\n" + out.message);
+				texts.push("AISLOP FEEDBACK:\\n" + feedback.join("\\n"));
 				pending.set(event.sessionID, { texts, at: Date.now() });
 			} catch {}
 		});

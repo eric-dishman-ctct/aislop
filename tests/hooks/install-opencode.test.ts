@@ -21,6 +21,9 @@ const loadPlugin = async (spawn: any) => {
 	const source = OPENCODE_PLUGIN_SOURCE.replace(
 		'import { Plugin } from "@opencode/plugin";',
 		"const Plugin = { define: (value: any) => value };",
+	).replace(
+		'import os from "node:os";',
+		"const os = { homedir: () => globalThis.__aislopHome };",
 	).replace("globalThis.__aislopSpawn || spawn", "globalThis.__aislopSpawn || spawn");
 	(globalThis as any).__aislopSpawn = spawn;
 	const output = ts.transpileModule(source, {
@@ -44,6 +47,30 @@ const child = (stdout = '{"message":"found"}', code = 0) => {
 	return result;
 };
 
+const writeRuntime = (dir: string, nodePath: string, cliPath: string, schema = 1): void => {
+	fs.mkdirSync(path.join(dir, ".aislop"), { recursive: true });
+	fs.writeFileSync(path.join(dir, ".aislop", "hook-runtime.json"), JSON.stringify({ schema, nodePath, cliPath }));
+};
+
+const createRuntimePaths = (dir: string, name: string) => {
+	const nodePath = path.join(dir, `${name}-node`);
+	const cliPath = path.join(dir, `${name}-cli.js`);
+	fs.writeFileSync(nodePath, "");
+	fs.writeFileSync(cliPath, "");
+	return { nodePath, cliPath };
+};
+
+const setupPlugin = async (spawn: any, directory: string) => {
+	const plugin: any = await loadPlugin(spawn);
+	const hooks: Record<string, Handler> = {};
+	await plugin.default.setup({
+		location: { directory },
+		tool: { hook: async (name: string, handler: Handler) => void (hooks[name] = handler) },
+		session: { hook: async (name: string, handler: Handler) => void (hooks[name] = handler) },
+	});
+	return hooks;
+};
+
 const assertCaptureFixture = (capture: unknown): void => {
 	expect(Array.isArray(capture)).toBe(true);
 	if (!Array.isArray(capture)) return;
@@ -54,6 +81,8 @@ const assertCaptureFixture = (capture: unknown): void => {
 describe("OpenCode runtime plugin", () => {
 	afterEach(() => {
 		delete (globalThis as any).__aislopSpawn;
+		delete (globalThis as any).__aislopHome;
+		vi.unstubAllEnvs();
 		vi.useRealTimers();
 	});
 
@@ -88,6 +117,141 @@ describe("OpenCode runtime plugin", () => {
 		expect(messages).toEqual([{ role: "user", content: [{ type: "text", text: "AISLOP FEEDBACK:\nfound" }] }]);
 		await hooks.context({ sessionID: fixture.sessionID, messages });
 		expect(messages).toHaveLength(1);
+	});
+
+	it("uses AISLOP_BIN before a valid runtime file with only hook and agent arguments", async () => {
+		const directory = fs.mkdtempSync(path.join(os.tmpdir(), "aislop-opencode-"));
+		try {
+			const runtime = createRuntimePaths(directory, "override");
+			writeRuntime(directory, runtime.nodePath, runtime.cliPath);
+			vi.stubEnv("AISLOP_BIN", "/override/aislop");
+			const spawn = vi.fn(() => child());
+			const hooks = await setupPlugin(spawn, directory);
+			await hooks["execute.after"]({ tool: "edit", status: "completed", sessionID: "one", input: { path: "a.ts" }, result: { output: {} } });
+			expect(spawn).toHaveBeenCalledWith("/override/aislop", ["hook", "opencode"], expect.any(Object));
+		} finally {
+			fs.rmSync(directory, { recursive: true, force: true });
+		}
+	});
+
+	it("uses the valid project runtime before the valid home runtime", async () => {
+		const directory = fs.mkdtempSync(path.join(os.tmpdir(), "aislop-opencode-"));
+		const home = fs.mkdtempSync(path.join(os.tmpdir(), "aislop-home-"));
+		try {
+			const project = createRuntimePaths(directory, "project");
+			const global = createRuntimePaths(home, "home");
+			writeRuntime(directory, project.nodePath, project.cliPath);
+			writeRuntime(home, global.nodePath, global.cliPath);
+			(globalThis as any).__aislopHome = home;
+			const spawn = vi.fn(() => child());
+			const hooks = await setupPlugin(spawn, directory);
+			await hooks["execute.after"]({ tool: "edit", status: "completed", sessionID: "one", input: { path: "a.ts" }, result: { output: {} } });
+			expect(spawn).toHaveBeenCalledWith(project.nodePath, [project.cliPath, "hook", "opencode"], expect.any(Object));
+		} finally {
+			fs.rmSync(directory, { recursive: true, force: true });
+			fs.rmSync(home, { recursive: true, force: true });
+		}
+	});
+
+	it("falls through for schema 2 with existing runtime paths", async () => {
+		const directory = fs.mkdtempSync(path.join(os.tmpdir(), "aislop-opencode-"));
+		try {
+			const runtime = createRuntimePaths(directory, "schema-two");
+			writeRuntime(directory, runtime.nodePath, runtime.cliPath, 2);
+			const spawn = vi.fn(() => child());
+			const hooks = await setupPlugin(spawn, directory);
+			await hooks["execute.after"]({ tool: "edit", status: "completed", sessionID: "one", input: { path: "a.ts" }, result: { output: {} } });
+			expect(spawn).toHaveBeenCalledWith("aislop", ["hook", "opencode"], expect.any(Object));
+		} finally {
+			fs.rmSync(directory, { recursive: true, force: true });
+		}
+	});
+
+	it("falls through and reports stale feedback when either runtime path is missing", async () => {
+		for (const missing of ["nodePath", "cliPath"] as const) {
+			const directory = fs.mkdtempSync(path.join(os.tmpdir(), "aislop-opencode-"));
+			try {
+				const runtime = createRuntimePaths(directory, missing);
+				fs.rmSync(runtime[missing]);
+				writeRuntime(directory, runtime.nodePath, runtime.cliPath);
+				const spawn = vi.fn(() => child());
+				const hooks = await setupPlugin(spawn, directory);
+				await hooks["execute.after"]({ tool: "edit", status: "completed", sessionID: missing, input: { path: "a.ts" }, result: { output: {} } });
+				expect(spawn).toHaveBeenCalledWith("aislop", ["hook", "opencode"], expect.any(Object));
+				const messages: any[] = [];
+				await hooks.context({ sessionID: missing, messages });
+				expect(messages[0].content[0].text).toBe("AISLOP FEEDBACK:\naislop: hook runtime stale, run aislop hook install\nfound");
+			} finally {
+				fs.rmSync(directory, { recursive: true, force: true });
+			}
+		}
+	});
+
+	it("uses a valid project runtime file before bare aislop", async () => {
+		const directory = fs.mkdtempSync(path.join(os.tmpdir(), "aislop-opencode-"));
+		try {
+			writeRuntime(directory, process.execPath, import.meta.filename);
+			const spawn = vi.fn(() => child());
+			const hooks = await setupPlugin(spawn, directory);
+			await hooks["execute.after"]({ tool: "edit", status: "completed", sessionID: "one", input: { path: "a.ts" }, result: { output: {} } });
+			expect(spawn).toHaveBeenCalledWith(process.execPath, [import.meta.filename, "hook", "opencode"], expect.any(Object));
+		} finally {
+			fs.rmSync(directory, { recursive: true, force: true });
+		}
+	});
+
+	it("uses the global runtime after a missing project runtime file", async () => {
+		const directory = fs.mkdtempSync(path.join(os.tmpdir(), "aislop-opencode-"));
+		const home = fs.mkdtempSync(path.join(os.tmpdir(), "aislop-home-"));
+		try {
+			(globalThis as any).__aislopHome = home;
+			writeRuntime(home, process.execPath, import.meta.filename);
+			const spawn = vi.fn(() => child());
+			const hooks = await setupPlugin(spawn, directory);
+			await hooks["execute.after"]({ tool: "edit", status: "completed", sessionID: "one", input: { path: "a.ts" }, result: { output: {} } });
+			expect(spawn).toHaveBeenCalledWith(process.execPath, [import.meta.filename, "hook", "opencode"], expect.any(Object));
+		} finally {
+			fs.rmSync(directory, { recursive: true, force: true });
+			fs.rmSync(home, { recursive: true, force: true });
+		}
+	});
+
+	it("falls through for missing and invalid runtime files", async () => {
+		const directory = fs.mkdtempSync(path.join(os.tmpdir(), "aislop-opencode-"));
+		try {
+			const spawn = vi.fn(() => child());
+			let hooks = await setupPlugin(spawn, directory);
+			await hooks["execute.after"]({ tool: "edit", status: "completed", sessionID: "one", input: { path: "a.ts" }, result: { output: {} } });
+			expect(spawn.mock.calls[0][0]).toBe("aislop");
+			fs.mkdirSync(path.join(directory, ".aislop"), { recursive: true });
+			fs.writeFileSync(path.join(directory, ".aislop", "hook-runtime.json"), "not json");
+			hooks = await setupPlugin(spawn, directory);
+			await hooks["execute.after"]({ tool: "edit", status: "completed", sessionID: "two", input: { path: "a.ts" }, result: { output: {} } });
+			expect(spawn.mock.calls[1][0]).toBe("aislop");
+		} finally {
+			fs.rmSync(directory, { recursive: true, force: true });
+		}
+	});
+
+	it("delivers stale feedback for failed, empty, and normal fallback output", async () => {
+		const directory = fs.mkdtempSync(path.join(os.tmpdir(), "aislop-opencode-"));
+		try {
+			writeRuntime(directory, "/missing/node", "/missing/cli.js");
+			const spawn = vi.fn()
+				.mockReturnValueOnce(child('{"message":"ignored"}', 1))
+				.mockReturnValueOnce(child(""))
+				.mockReturnValueOnce(child('{"message":"found"}'));
+			const hooks = await setupPlugin(spawn, directory);
+			for (const [sessionID, expected] of [["failed", "aislop: hook runtime stale, run aislop hook install"], ["empty", "aislop: hook runtime stale, run aislop hook install"], ["normal", "aislop: hook runtime stale, run aislop hook install\nfound"]]) {
+				await hooks["execute.after"]({ tool: "edit", status: "completed", sessionID, input: { path: "a.ts" }, result: { output: {} } });
+				const messages: any[] = [];
+				await hooks.context({ sessionID, messages });
+				expect(messages[0].content[0].text).toBe(`AISLOP FEEDBACK:\n${expected}`);
+			}
+			expect(spawn.mock.calls.every(([bin]: [string]) => bin === "aislop")).toBe(true);
+		} finally {
+			fs.rmSync(directory, { recursive: true, force: true });
+		}
 	});
 
 	it("uses input.path, ignores other tools and errors, and isolates sessions", async () => {
