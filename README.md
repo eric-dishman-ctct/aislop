@@ -293,6 +293,8 @@ aislop install hooks --claude          # natural alias for hook install
 
 Global installs use absolute Node and CLI paths. Project installs use portable commands. Use `--absolute` for project machine paths. Do not commit the hook file. Run `aislop hook install` after you upgrade Node or aislop. Windows builders are unverified. The pi and OpenCode plugins use `AISLOP_BIN`, then the project runtime file, then the home runtime file, then bare `aislop`. A stale runtime file adds `aislop: hook runtime stale, run aislop hook install` to the feedback.
 
+Run `aislop hook doctor` to check managed hooks in both scopes. Use `--global` or `--project` to limit the scope. Doctor runs an inert probe for each hook. It reports failed hooks and stale runtime files. Run `aislop hook install`, then quit and start the host again.
+
 Hook install flags: `--agent <names>`, `-g, --global`, `--project`, `--absolute`, `--dry-run`, `--yes`, `--quality-gate`, plus per-agent shortcuts `--claude`, `--cursor`, `--gemini`, `--pi`, `--codex`, `--windsurf`, `--cline`, `--kilocode`, `--antigravity`, `--copilot`, `--opencode`.
 
 **Quality-gate mode**: Blocks if score regresses below baseline.

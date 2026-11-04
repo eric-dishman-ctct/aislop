@@ -39,6 +39,7 @@ npx aislop@latest scan
 | `aislop hook uninstall [agents...]` | Remove coding-agent hooks |
 | `aislop hooks` | Alias for `aislop hook` |
 | `aislop hook status` | Show installed hook status |
+| `aislop hook doctor [--json] [--project|--global]` | Check each managed hook command |
 | `aislop hook baseline` | Capture the current score as the hook baseline |
 | `aislop install [agents...]` | Alias for `aislop hook install` |
 | `aislop install hooks [agents...]` | Natural alias for `aislop hook install` |
@@ -199,6 +200,8 @@ Session review commands:
 Agent shortcut flags: `--claude`, `--cursor`, `--gemini`, `--pi`, `--codex`, `--windsurf`, `--cline`, `--kilocode`, `--antigravity`, `--copilot`, `--opencode`.
 
 Global installs use absolute Node and CLI paths. Project installs use portable commands. Use `--absolute` for project machine paths. Do not commit the hook file. Run `aislop hook install` after you upgrade Node or aislop. Windows builders are unverified. The pi and OpenCode plugins use `AISLOP_BIN`, then the project runtime file, then the home runtime file, then bare `aislop`. A stale runtime file adds `aislop: hook runtime stale, run aislop hook install` to the feedback.
+
+Run `aislop hook doctor` to check managed hooks in both scopes. Use `--global` or `--project` to limit the scope. The command runs each hook with an inert probe. It reports the command path and a stale runtime file. Run `aislop hook install` if doctor reports a stale or failed hook. Then quit and relaunch the host.
 
 Copilot runtime hooks need VS Code 1.144.0 or Copilot CLI 1.0.105 or later, and a trusted folder. The hook command is `aislop hook claude`. The VS Code hook process does not use the Node path that nvm adds during shell startup. If hooks are silent in VS Code, use the global absolute install. After `aislop hook install`, quit and relaunch VS Code. A window reload does not load a changed hook file.
 

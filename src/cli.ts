@@ -66,6 +66,7 @@ const fireInstalledOnce = (): void => {
 };
 
 const hasNoUserArgs = (): boolean => process.argv.slice(2).length === 0;
+const isDoctorProbe = (): boolean => process.argv.includes("--doctor-probe");
 
 const shouldRenderRootHelp = (): boolean => {
 	const args = process.argv.slice(2);
@@ -250,7 +251,7 @@ registerHookCommand(program);
 registerHookAliases(program);
 
 const main = async () => {
-	fireInstalledOnce();
+	if (!isDoctorProbe()) fireInstalledOnce();
 	if (shouldRenderPlainVersion()) {
 		process.stdout.write(`${APP_VERSION}\n`);
 		return;
@@ -277,8 +278,10 @@ const main = async () => {
 		}
 	}
 	await program.parseAsync();
-	await flushTelemetry();
-	await maybeNotifyUpdate();
+	if (!isDoctorProbe()) {
+		await flushTelemetry();
+		await maybeNotifyUpdate();
+	}
 };
 
 main().catch((error) => exitOnFatal(error, "main"));

@@ -14,6 +14,7 @@ import {
 import { loadConfig } from "../config/index.js";
 import { type AgentName, detectInstalledAgents } from "../hooks/install/registry.js";
 import { printHookRuntime } from "../hooks/runtime/status.js";
+import { renderHookDoctor, runHookDoctor } from "../hooks/doctor.js";
 import { withCommandLifecycle } from "../telemetry/index.js";
 import { log } from "../ui/logger.js";
 
@@ -223,6 +224,40 @@ const registerRuntime = (hook: Command): void => {
 		.action(() => printHookRuntime(process.argv.includes("--json")));
 };
 
+const registerDoctor = (hook: Command): void => {
+	hook
+		.command("doctor")
+		.description("Check installed managed hook commands")
+		.option("--json", "print JSON")
+		.option("--global", "check the user-scope config")
+		.option("--project", "check the project-scope config")
+		.action(async (opts: { json?: boolean; global?: boolean; project?: boolean }, command) => {
+			const report = await runHookDoctor(opts);
+			const globals = command.optsWithGlobals() as { json?: boolean };
+			process.stdout.write(renderHookDoctor(report, Boolean(opts.json || globals.json)));
+			if (report.entries.length === 0) process.exitCode = 2;
+			else if (
+				report.entries.some((entry) => !entry.delivered || entry.provenanceMismatch) ||
+				report.runtime.some((item) => item.status === "stale")
+			)
+				process.exitCode = 1;
+		});
+};
+
+const registerRuntimeCallback = (
+	hook: Command,
+	agent: "cursor" | "gemini" | "pi" | "opencode",
+	description: string,
+): void => {
+	hook
+		.command(agent, { hidden: true })
+		.description(description)
+		.option("--doctor-probe", "print the inert hook probe envelope")
+		.action(async (opts: { doctorProbe?: boolean }) => {
+			await hookRun(agent, opts);
+		});
+};
+
 const registerCallbacks = (hook: Command): void => {
 	hook
 		.command("status")
@@ -256,36 +291,18 @@ const registerCallbacks = (hook: Command): void => {
 			"--on-file-changed",
 			"run in FileChanged mode (refresh baseline on watched file change)",
 		)
-		.action(async (opts: { stop?: boolean; onFileChanged?: boolean }) => {
+		.option("--doctor-probe", "print the inert hook probe envelope")
+		.action(async (opts: { stop?: boolean; onFileChanged?: boolean; doctorProbe?: boolean }) => {
 			await hookRun("claude", {
 				stop: Boolean(opts.stop),
 				onFileChanged: Boolean(opts.onFileChanged),
+				doctorProbe: Boolean(opts.doctorProbe),
 			});
 		});
-	hook
-		.command("cursor", { hidden: true })
-		.description("Internal: Cursor afterFileEdit callback (reads stdin)")
-		.action(async () => {
-			await hookRun("cursor");
-		});
-	hook
-		.command("gemini", { hidden: true })
-		.description("Internal: Gemini CLI AfterTool callback (reads stdin)")
-		.action(async () => {
-			await hookRun("gemini");
-		});
-	hook
-		.command("pi", { hidden: true })
-		.description("Internal: pi extension tool_result callback (reads stdin)")
-		.action(async () => {
-			await hookRun("pi");
-		});
-	hook
-		.command("opencode", { hidden: true })
-		.description("Internal: OpenCode runtime callback (reads stdin)")
-		.action(async () => {
-			await hookRun("opencode");
-		});
+	registerRuntimeCallback(hook, "cursor", "Internal: Cursor afterFileEdit callback (reads stdin)");
+	registerRuntimeCallback(hook, "gemini", "Internal: Gemini CLI AfterTool callback (reads stdin)");
+	registerRuntimeCallback(hook, "pi", "Internal: pi extension tool_result callback (reads stdin)");
+	registerRuntimeCallback(hook, "opencode", "Internal: OpenCode runtime callback (reads stdin)");
 };
 
 export const registerHookCommand = (program: Command): void => {
@@ -296,6 +313,7 @@ export const registerHookCommand = (program: Command): void => {
 	registerInstall(hook);
 	registerUninstall(hook);
 	registerRuntime(hook);
+	registerDoctor(hook);
 	registerCallbacks(hook);
 };
 

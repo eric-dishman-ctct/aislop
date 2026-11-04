@@ -4,7 +4,7 @@ title: "PATH-independent hook commands"
 summary: "Make every aislop hook run without PATH lookup of aislop or node, per KD-007: install-time resolver, per-host command builders, run-time resolution in plugins, a temporary-install guard, and hook doctor"
 status: in-progress
 created: 2026-11-03T15:47:37
-updated: 2026-11-04T09:31:01
+updated: 2026-11-04T10:44:01
 tags: ["aislop", "hooks", "path"]
 ---
 
@@ -12,7 +12,7 @@ tags: ["aislop", "hooks", "path"]
 
 ## Status
 
-In progress. U1 committed as b47169d. U2 committed as 136ed93. U3 committed as 0d5c198. Accepted revision 2 after two plan review rounds. Round 2 findings are folded in as C5. Decision [KD-007](../decisions/20261103T140509--hook-command-embeds-node-and-cli-paths__aislop.md)
+In progress. U1 committed as b47169d. U2 committed as 136ed93. U3 committed as 0d5c198. U4 passed review, commit pending. Accepted revision 2 after two plan review rounds. Round 2 findings are folded in as C5. Decision [KD-007](../decisions/20261103T140509--hook-command-embeds-node-and-cli-paths__aislop.md)
 accepted. No unit started. Baseline for all reviews: the commit that lands this plan.
 
 ## Context
@@ -118,17 +118,17 @@ spawns the wrong binary or falls through to `PATH` silently.
 Risk: MEDIUM. One worker, one execution reviewer. Consequence of a defect: doctor reports
 healthy for a hook that does not run.
 
-- [ ] Adapter probe mode: every `aislop hook <agent>` subcommand accepts `--doctor-probe`. It prints `{schema: "aislop.hook.probe.v1", version, nodePath, cliPath}` to stdout and exits 0. It reads no stdin, opens no lock, and writes no baseline or session file
-- [ ] CLI startup skips `fireInstalledOnce` and every other pre-parse write (`src/cli.ts:252-253`, `src/telemetry/identity.ts:30-34`) when `--doctor-probe` is in `argv`. Test: telemetry enabled, fresh temp HOME, run the probe, assert HOME tree unchanged
-- [ ] `aislop hook doctor`: for every detected agent and scope, read each managed entry, take its command exactly as written (`command` string through the platform shell, or `exec` plus `args` without a shell), append `--doctor-probe`, run with a 10 s timeout, and report per entry: started (process ran), delivered (probe JSON parsed), version, nodePath and cliPath exist, stale versus the runtime file
-- [ ] Doctor runs each managed entry once per event group (PostToolUse, Stop, FileChanged), so a broken Stop command gets its own line
-- [ ] Plugin hosts: doctor loads the generated file in-process with the same loader the executed-plugin tests use, registers it against a fake host, drives the hook with one synthetic edit event, and injects a runner that appends `--doctor-probe` to whatever the handler spawns. The host process is not started. The report says delivered only when the handler produced the probe JSON through its own code path. This executes every managed hook per KD-007 item 6, including the handler code, not only the command it would pick
-- [ ] `hook install` on a host with a stale absolute command rewrites it
-- [ ] `hook status` shows a stale marker
-- [ ] Docs: `docs/commands.md` doctor section, troubleshooting order: `hook doctor`, then `hook install`, then quit and relaunch the host
-- [ ] Tests red-first for every Mechanisms row marked U4, `Test` column added
-- [ ] Gates captured
-- [ ] Independent review PASS
+- [x] Adapter probe mode: every `aislop hook <agent>` subcommand accepts `--doctor-probe`. It prints `{schema: "aislop.hook.probe.v1", version, nodePath, cliPath}` to stdout and exits 0. It reads no stdin, opens no lock, and writes no baseline or session file ([u4-gates](../evidence/20261103-u4-gates.md))
+- [x] CLI startup skips `fireInstalledOnce` and every other pre-parse write (`src/cli.ts:252-253`, `src/telemetry/identity.ts:30-34`) when `--doctor-probe` is in `argv`. Test: telemetry enabled, fresh temp HOME, run the probe, assert HOME tree unchanged ([u4-gates](../evidence/20261103-u4-gates.md))
+- [x] `aislop hook doctor`: for every detected agent and scope, read each managed entry, take its command exactly as written (`command` string through the platform shell, or `exec` plus `args` without a shell), append `--doctor-probe`, run with a 10 s timeout, and report per entry: started (process ran), delivered (probe JSON parsed), version, nodePath and cliPath exist, stale versus the runtime file ([u4-gates](../evidence/20261103-u4-gates.md))
+- [x] Doctor runs each managed entry once per event group (PostToolUse, Stop, FileChanged), so a broken Stop command gets its own line ([u4-gates](../evidence/20261103-u4-gates.md))
+- [x] Plugin hosts: doctor loads the generated file in-process with the same loader the executed-plugin tests use, registers it against a fake host, drives the hook with one synthetic edit event, and injects a runner that appends `--doctor-probe` to whatever the handler spawns. The host process is not started. The report says delivered only when the handler produced the probe JSON through its own code path. This executes every managed hook per KD-007 item 6, including the handler code, not only the command it would pick ([u4-gates](../evidence/20261103-u4-gates.md))
+- [x] `hook install` on a host with a stale absolute command rewrites it ([u4-gates](../evidence/20261103-u4-gates.md))
+- [x] `hook status` shows a stale marker ([u4-gates](../evidence/20261103-u4-gates.md))
+- [x] Docs: `docs/commands.md` doctor section, troubleshooting order: `hook doctor`, then `hook install`, then quit and relaunch the host ([u4-gates](../evidence/20261103-u4-gates.md))
+- [x] Tests red-first for every Mechanisms row marked U4, `Test` column added ([u4-gates](../evidence/20261103-u4-gates.md))
+- [x] Gates captured ([u4-gates](../evidence/20261103-u4-gates.md))
+- [x] Independent review PASS ([u4-gates](../evidence/20261103-u4-gates.md))
 - [x] Commit b47169d
 
 ### Phase 5: integration
@@ -170,14 +170,14 @@ Risk: LOW. Orchestrator runs existing tools and live checks.
 | U3 fall-through | Missing or malformed runtime file does not throw and reaches bare | `install-pi.test.ts` and `install-opencode.test.ts`: schema 2, missing node path, and missing CLI path fallbacks |
 | U3 stale line | A stale runtime file reaches bare and delivers the stale line once, also when the fallback fails or is empty | `install-pi.test.ts` and `install-opencode.test.ts`: missing node or CLI path stale feedback, failed, empty, and normal fallback |
 | U3 pi path extraction | The extension reads `event.input.path`, not another key | `install-pi.test.ts`: reads `event.input.path` instead of `event.input.file` |
-| U4 probe mode is inert | `--doctor-probe` writes no baseline, session, lock, or telemetry identity file and reads no stdin | HOME and project trees unchanged |
-| U4 probe execution | Doctor runs the entry as written, string through the shell or `exec` without one | injected runner receives the file's entry |
-| U4 started versus delivered | A process that runs but prints no probe JSON is reported started, not delivered | two report fields |
-| U4 plugin probe | Doctor drives the generated handler with a synthetic event and the probe reaches the runner through the handler | injected runner called by handler |
-| U4 status marker | `hook status` shows a stale marker from the same check | status output |
-| U4 stale detection | Missing nodePath or cliPath, or version mismatch, is reported stale | report field |
-| U4 timeout | A hung hook is killed and reported | 10000 ms |
-| U4 repair | Install over a stale absolute command rewrites it | file content after |
+| U4 probe mode is inert | `--doctor-probe` writes no baseline, session, lock, or telemetry identity file and reads no stdin | `doctor.test.ts`: keeps built probes inert with telemetry live and creates identity for a normal hook |
+| U4 probe execution | Doctor runs the entry as written, string through the shell or `exec` without one | `doctor.test.ts`: runs a managed command and reads its probe envelope |
+| U4 started versus delivered | A process that runs but prints no probe JSON is reported started, not delivered | `doctor.test.ts`: distinguishes started, delivered, and failed spawn |
+| U4 plugin probe | Doctor drives the generated handler with a synthetic event and the probe reaches the runner through the handler | `doctor.test.ts`: executes each generated plugin argv and checks its real probe envelope |
+| U4 status marker | `hook status` shows a stale marker from the same check | `doctor.test.ts`: marks only installed agents stale through the real status path |
+| U4 stale detection | Missing nodePath or cliPath, or version mismatch, is reported stale | `doctor.test.ts`: reports stale runtime paths and a version mismatch |
+| U4 timeout | A hung hook is killed and reported | `doctor.test.ts`: kills the child at 10,000 ms on the default timeout |
+| U4 repair | Install over a stale absolute command rewrites it | `hook-command.test.ts`: stale absolute Claude command rewrite |
 
 ## Gates
 
@@ -186,9 +186,9 @@ Risk: LOW. Orchestrator runs existing tools and live checks.
 | G1 | U1 Mechanisms rows with a reviewer-confirmed deletion-discriminating test | 11 of 11 | 11 of 11, [u1-gates](../evidence/20261103-u1-gates.md) | [x] |
 | G2 | U2 rows with a reviewer-confirmed test | 7 of 7 | 7 of 7, [u2-gates](../evidence/20261103-u2-gates.md) | [x] |
 | G3 | U3 rows with a reviewer-confirmed test | 6 of 6 | 6 of 6, [u3-gates](../evidence/20261103-u3-gates.md) | [x] |
-| G4 | U4 rows with a reviewer-confirmed test | 8 of 8 | | [ ] |
-| G5 | Full suite failures after each unit | 0 | | [ ] |
-| G6 | Self-scan score versus `wave-hooks-v1` | >= 100, 0 warnings | | [ ] |
+| G4 | U4 rows with a reviewer-confirmed test | 8 of 8 | 8 of 8, [u4-gates](../evidence/20261103-u4-gates.md) | [x] |
+| G5 | Full suite failures after each unit | 0 | 0 failures, 240 files, 2507 passed, 1 skipped, [u4-gates](../evidence/20261103-u4-gates.md) | [x] |
+| G6 | Self-scan score versus `wave-hooks-v1` | >= 100, 0 warnings | 100 of 100, 0 warnings, no suppressions, [u4-gates](../evidence/20261103-u4-gates.md) | [x] |
 | G7 | Live VS Code block-and-fix with the installer-written global hook, no probe wrapper | yes | | [ ] |
 | G8 | Live refusal under `npx` from a packed tarball, exit 1, no file written | yes | | [ ] |
 | G9 | Builders labelled unverified on Windows in docs | present | | [ ] |
@@ -205,6 +205,10 @@ Risk: LOW. Orchestrator runs existing tools and live checks.
 | U2 | 2 | PASS, all eleven round-1 survivors fail named tests, summary idempotent on the built CLI | 0 | 0 | 2026-11-04 |
 | U3 | 1 | BLOCK: live OpenCode and pi runtime branch and stale line proven, but four wrong-code mutations survived both suites (branch order, home over project, schema 2, missing nodePath alone) | 1 | 0 | 2026-11-04 |
 | U3 | 2 | PASS, five mutations caught in both suites, source byte-identical to round 1 | 0 | 0 | 2026-11-04 |
+| U4 | 1 | BLOCK: plugin doctor fabricated the probe envelope (AISLOP_BIN=/missing reported delivered), hook status marked uninstalled agents stale, 8 of 19 mutations survived, telemetry test ran with telemetry disabled | 2 | 0 | 2026-11-04 |
+| U4 | 2 | BLOCK: nonzero exit with a valid envelope counted as delivered, wrong-schema fixture never printed, status regex matched later agents. Both round-1 Class A fixed and proven on the built CLI | 1 | 2 | 2026-11-04 |
+| U4 | 3 | BLOCK (narrow, user-approved after reassessment): the three scoped items pass, new finding that a complexity/file-too-large directive on src/commands/hook.ts hid a real 456-line warning | 1 | 1 | 2026-11-04 |
+| U4b | 1 | PASS: status rendering moved to src/hooks/status-render.ts, all directives removed, help and output byte-neutral, four U4 mutations still caught. Non-blocking: inert-probe test checked identity file only, HOME-tree assertion added afterwards red-first (no further round) | 0 | 1 | 2026-11-04 |
 | plan | 2 | BLOCK, three findings folded into the text and C5. Round cap reached, plan accepted by the user with C5 mandatory | 3 | 0 | 2026-11-03 |
 
 ## Carried findings
@@ -217,6 +221,8 @@ Risk: LOW. Orchestrator runs existing tools and live checks.
 | C6 | U2 worker round 1 red captures were taken as deletion failures, not before the code change. Disclosed nonconformance, accepted on the strength of two reviewer deletion rounds. Round 2 captures were red-first | U2 worker report | Review log U2 rows |
 | C7 | README and docs/commands.md STE 2.69 per 100 words (orchestrator lint), same cause as foundation C11: required literal command text. Out of scope | U2 worker report | None needed |
 | C8 | Live OpenCode checks in U3 ran on OpenCode 2.2.5, not the 2.2.4 cited by WU-2. Behaviour unchanged | U3 review round 1 | None needed |
+| C9 | U4 worker skipped per-row red-first in its first two passes (one combined red capture). Disclosed nonconformance, accepted on deletion discrimination across four review rounds. Rounds 2, 3 and the HOME-tree pin were red-first | U4 worker reports | Review log U4 rows |
+| C10 | U4 needed three blocked rounds. Reassessment (user approved) found the final block was a self-scan suppression, not a doctor defect, and split a refactor leg U4b | Review log | Closed by U4b |
 | C4 | Plan round 1: runtime file location, plugin temporary guard, inert doctor probe, plugin doctor execution, stale path, built-CLI test | plan review 1 | Phase 1, 3, 4 tasks and rows |
 | C3 | Copilot scans report telemetry agent `claude` (foundation C7) | wave 1 | Not in scope |
 

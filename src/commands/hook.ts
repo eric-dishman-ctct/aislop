@@ -1,4 +1,3 @@
-import fs from "node:fs";
 import os from "node:os";
 import {
 	runClaudeFileChangedHook,
@@ -14,8 +13,6 @@ import {
 	AGENTS_SUPPORTING_BOTH_SCOPES,
 	type AgentName,
 	ALL_AGENTS,
-	defaultScopeFor,
-	detectInstalledAgents,
 	REGISTRY,
 	scopeHasManagedMarker,
 } from "../hooks/install/registry.js";
@@ -27,7 +24,10 @@ import type {
 import { resolveHookRoot } from "../hooks/io/project-root.js";
 import { captureBaseline } from "../hooks/quality-gate/baseline.js";
 import { flushTelemetry } from "../telemetry/client.js";
+import { resolveHookRuntime } from "../hooks/runtime/resolve.js";
 import { allowHookRuntimeInstall, writeInstalledHookRuntimes } from "../hooks/runtime/install.js";
+import { hookMarker } from "../hooks/status-render.js";
+export { hookStatus, renderHookStatus } from "../hooks/status-render.js";
 import {
 	type DisplayRow,
 	type DisplayStatusItem,
@@ -37,7 +37,6 @@ import {
 } from "../ui/display.js";
 import { renderHeader } from "../ui/header.js";
 import { searchMultiselect } from "../ui/search-select.js";
-import { style, theme } from "../ui/theme.js";
 import { APP_VERSION } from "../version.js";
 
 // A per-edit hook must not stall the agent on telemetry. Give the queued event a
@@ -154,9 +153,6 @@ const installStatus = (item: HookInstallRenderItem, dryRun: boolean): string => 
 	return item.result.wrote.length > 0 ? "updated" : "up to date";
 };
 
-const hookMarker = (active: boolean): string =>
-	active ? style(theme, "success", "✓") : style(theme, "muted", "·");
-
 const hookOperationItem = (item: HookOperationRenderItem): DisplayStatusItem => ({
 	marker: hookMarker(item.status !== "up to date" && item.status !== "nothing installed"),
 	label: item.agent,
@@ -205,6 +201,9 @@ const installRows = (item: HookInstallRenderItem, dryRun: boolean): DisplayRow[]
 	if (item.result.rewrittenFromPortable) {
 		rows.push({ label: "Rewrote portable command", value: "absolute Node and CLI paths" });
 	}
+	if (item.result.rewrittenFromStaleAbsolute) {
+		rows.push({ label: "Rewrote stale absolute command", value: "current Node and CLI paths" });
+	}
 	for (const path of item.result.wrote) rows.push({ label: "Wrote", value: path });
 	for (const path of item.result.skipped) rows.push({ label: "Skipped", value: path });
 	return rows;
@@ -250,58 +249,17 @@ export const renderHookUninstall = (input: {
 		}),
 	});
 
-export const hookStatus = async (): Promise<void> => {
-	const home = os.homedir();
-	const cwd = process.cwd();
-	const installed = new Set(detectInstalledAgents({ home, cwd }));
-	const items = ALL_AGENTS.map((agent) => {
-		const scopes = AGENTS_SUPPORTING_BOTH_SCOPES.includes(agent)
-			? (["global", "project"] as const)
-			: [defaultScopeFor(agent)];
-		const targets = scopes.flatMap((scope) =>
-			REGISTRY[agent].paths({ home, cwd, scope, absolute: scope === "global" }),
-		);
-		return {
-			agent,
-			scope: scopes.join(" + "),
-			installed: installed.has(agent),
-			paths: targets.filter((p) => fs.existsSync(p)),
-		};
-	});
-	process.stdout.write(renderHookStatus(items));
-};
-
-export const renderHookStatus = (
-	items: Array<{
-		agent: AgentName;
-		scope: string;
-		installed: boolean;
-		paths: string[];
-	}>,
-): string => {
-	const lines = [
-		renderHeader({ version: APP_VERSION, command: "Hook status", context: [] }).trimEnd(),
-		"",
-		renderDisplaySection("Hooks"),
-		...renderDisplayStatusItems(
-			items.map((item) => ({
-				marker: hookMarker(item.installed),
-				label: item.agent,
-				rows: [
-					{ label: "Status", value: item.installed ? "installed" : "not installed" },
-					{ label: "Scope", value: item.scope },
-					...item.paths.map((p) => ({ label: "Path", value: p })),
-				],
-			})),
-		),
-	];
-	return `${lines.join("\n")}\n`;
-};
-
 export const hookRun = async (
 	agent: AgentName,
-	flags?: { stop?: boolean; onFileChanged?: boolean },
+	flags?: { stop?: boolean; onFileChanged?: boolean; doctorProbe?: boolean },
 ): Promise<void> => {
+	if (flags?.doctorProbe) {
+		const runtime = resolveHookRuntime();
+		process.stdout.write(
+			`${JSON.stringify({ schema: "aislop.hook.probe.v1", agent, version: APP_VERSION, cliPath: runtime.cliPath, nodePath: runtime.nodePath })}\n`,
+		);
+		return;
+	}
 	if (process.stdin.isTTY) {
 		process.stderr.write(
 			`aislop hook ${agent} is an internal callback the agent invokes automatically. It reads a payload on stdin and has nothing to do interactively.\n\nYou probably want:\n  aislop hook install --${agent}     (install the hook for ${agent})\n  aislop hook status                   (see what's installed)\n  aislop hook uninstall --${agent}   (remove it)\n`,

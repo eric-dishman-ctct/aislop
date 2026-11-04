@@ -18,6 +18,7 @@ export interface HookInstallResult {
 	skipped: string[];
 	planned: { path: string; summary: string }[];
 	rewrittenFromPortable?: boolean;
+	rewrittenFromStaleAbsolute?: boolean;
 }
 
 export interface HookUninstallResult {
@@ -53,7 +54,30 @@ export const markPortableRewrite = (
 				return true;
 			return Object.values(entry).some(containsPortableCommand);
 		};
-		if (containsPortableCommand(JSON.parse(existing))) result.rewrittenFromPortable = true;
+		const parsed = JSON.parse(existing);
+		if (containsPortableCommand(parsed)) {
+			result.rewrittenFromPortable = true;
+			return;
+		}
+		const containsStaleAbsoluteCommand = (value: unknown): boolean => {
+			if (Array.isArray(value)) return value.some(containsStaleAbsoluteCommand);
+			if (value == null || typeof value !== "object") return false;
+			const entry = value as Record<string, unknown>;
+			if (
+				typeof entry.command === "string" &&
+				typeof entry.__aislop === "object" &&
+				entry.__aislop !== null &&
+				(entry.__aislop as Record<string, unknown>).managed === true
+			) {
+				const nodePath = entry.command
+					.match(/^(?:'([^']+)'|"([^"]+)"|([^\s]+))/)
+					?.slice(1)
+					.find(Boolean);
+				if (nodePath && !fs.existsSync(nodePath)) return true;
+			}
+			return Object.values(entry).some(containsStaleAbsoluteCommand);
+		};
+		if (containsStaleAbsoluteCommand(parsed)) result.rewrittenFromStaleAbsolute = true;
 	} catch {
 		// The installer replaces invalid JSON without a portable rewrite report.
 	}

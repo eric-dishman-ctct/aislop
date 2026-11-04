@@ -268,6 +268,26 @@ describe("hook install command form", () => {
 		expect(output).toContain("Rewrote portable command");
 	});
 
+	it("rewrites a stale absolute command on a global reinstall", async () => {
+		const home = tempDir();
+		const cwd = tempDir();
+		const paths = resolveClaudePaths({ home, cwd, scope: "global", qualityGate: false });
+		fs.mkdirSync(path.dirname(paths.settings), { recursive: true });
+		fs.writeFileSync(paths.settings, JSON.stringify({ hooks: { PostToolUse: [{ hooks: [{
+			type: "command",
+			command: "'/missing/node' '/missing/cli' hook claude",
+			__aislop: { managed: true },
+		}] }] } }));
+		const stdout = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+		vi.spyOn(os, "homedir").mockReturnValue(home);
+		vi.spyOn(process, "cwd").mockReturnValue(cwd);
+		await hookInstall({ agents: ["claude"], scope: "global", dryRun: false, yes: true, qualityGate: false });
+		const output = stdout.mock.calls.map(([text]) => String(text)).join("");
+		const settings = fs.readFileSync(paths.settings, "utf8");
+		expect(settings).toContain(process.execPath);
+		expect(output).toContain("Rewrote stale absolute command");
+	});
+
 	it("does not name a portable command rewrite on a fresh install", async () => {
 		const home = tempDir();
 		const cwd = tempDir();
