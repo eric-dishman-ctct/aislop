@@ -27,6 +27,7 @@ import type {
 import { resolveHookRoot } from "../hooks/io/project-root.js";
 import { captureBaseline } from "../hooks/quality-gate/baseline.js";
 import { flushTelemetry } from "../telemetry/client.js";
+import { allowHookRuntimeInstall, writeInstalledHookRuntimes } from "../hooks/runtime/install.js";
 import {
 	type DisplayRow,
 	type DisplayStatusItem,
@@ -95,7 +96,9 @@ const resolveOpts = (agent: AgentName, flags: InstallFlags): HookInstallOpts => 
 	};
 };
 
-export const hookInstall = async (flags: InstallFlags): Promise<void> => {
+export const hookInstall = async (
+	flags: InstallFlags & { forceTemporary?: boolean },
+): Promise<void> => {
 	if (flags.qualityGate && flags.agents.includes("opencode")) {
 		process.stderr.write(
 			"The --quality-gate option is not available for OpenCode. No files were written.\n",
@@ -103,11 +106,18 @@ export const hookInstall = async (flags: InstallFlags): Promise<void> => {
 		process.exitCode = 1;
 		return;
 	}
+	if (!allowHookRuntimeInstall(flags.dryRun, Boolean(flags.forceTemporary))) return;
 	const items: HookInstallRenderItem[] = [];
+	const runtimeScopes = new Set<"global" | "project">();
 	for (const agent of flags.agents) {
 		const opts = resolveOpts(agent, flags);
 		const result = REGISTRY[agent].install(opts);
 		items.push({ agent, scope: opts.scope, result });
+		runtimeScopes.add(opts.scope);
+	}
+	if (!flags.dryRun) writeInstalledHookRuntimes(runtimeScopes);
+	if (flags.scope === "project") {
+		process.stdout.write("Reminder: .aislop/hook-runtime.json holds machine paths.\n");
 	}
 	process.stdout.write(renderHookInstall({ dryRun: flags.dryRun, items }));
 };

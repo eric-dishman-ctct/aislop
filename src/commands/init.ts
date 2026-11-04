@@ -157,6 +157,22 @@ const strictChoices = (): InitChoices => ({
 	writeGithubWorkflow: true,
 });
 
+const HOOK_STATE_GITIGNORE = [
+	".aislop/hook-runtime.json",
+	".aislop/session.jsonl",
+	".aislop/hook.lock",
+];
+
+const writeHookStateGitignore = (rootDirectory: string): boolean => {
+	const target = path.join(rootDirectory, ".gitignore");
+	const existing = fs.existsSync(target) ? fs.readFileSync(target, "utf8") : "";
+	const missing = HOOK_STATE_GITIGNORE.filter((entry) => !existing.split(/\r?\n/).includes(entry));
+	if (missing.length === 0) return false;
+	const prefix = existing.length === 0 || existing.endsWith("\n") ? existing : `${existing}\n`;
+	fs.writeFileSync(target, `${prefix}${missing.join("\n")}\n`);
+	return true;
+};
+
 const writeAislopConfig = (configDir: string, configPath: string, choices: InitChoices): void => {
 	const selected = new Set(choices.engines);
 	const engines: typeof DEFAULT_CONFIG.engines = {
@@ -251,6 +267,9 @@ export const initCommand = async (directory: string, options: InitOptions = {}):
 	writeAislopConfig(configDir, configPath, choices);
 
 	const steps: RailStep[] = [{ status: "done", label: `Wrote ${configName}` }];
+	if (writeHookStateGitignore(resolvedDir)) {
+		steps.push({ status: "done", label: "Updated .gitignore for hook state" });
+	}
 
 	if (choices.engines.includes("architecture")) {
 		if (!fs.existsSync(rulesPath)) {

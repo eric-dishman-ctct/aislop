@@ -1,4 +1,8 @@
-export const detectInvocation = (): string => {
-	const underNpx = (process.argv[1] ?? "").includes("_npx") || import.meta.url.includes("_npx");
-	return underNpx ? "npx aislop@latest" : "aislop";
-};
+import { fileURLToPath } from "node:url";
+import { isTemporaryExecution } from "../hooks/runtime/resolve.js";
+
+export const detectInvocation = (): string =>
+	isTemporaryExecution(process.argv[1] ?? "") ||
+	isTemporaryExecution(fileURLToPath(import.meta.url))
+		? "npx aislop@latest"
+		: "aislop";

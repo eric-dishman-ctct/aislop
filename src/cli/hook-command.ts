@@ -13,6 +13,7 @@ import {
 } from "../commands/hook.js";
 import { loadConfig } from "../config/index.js";
 import { type AgentName, detectInstalledAgents } from "../hooks/install/registry.js";
+import { printHookRuntime } from "../hooks/runtime/status.js";
 import { withCommandLifecycle } from "../telemetry/index.js";
 import { log } from "../ui/logger.js";
 
@@ -103,6 +104,7 @@ type InstallOpts = AgentFlagOpts & {
 	dryRun?: boolean;
 	yes?: boolean;
 	qualityGate?: boolean;
+	forceTemporary?: boolean;
 };
 
 type UninstallOpts = AgentFlagOpts & {
@@ -129,6 +131,7 @@ const addInstallOptions = (command: Command): Command =>
 			.option("--project", "install to the project-scope config")
 			.option("--dry-run", "print the planned diff without writing")
 			.option("--yes", "skip the confirmation prompt (reserved)")
+			.option("--force-temporary", "allow an install from a temporary package cache")
 			.option(
 				"--quality-gate",
 				"add a Stop hook that blocks when the score regresses below the baseline (Claude and Copilot). The gate rescans files recorded from Edit, Write, and MultiEdit calls. It does not see shell edits to unrecorded files. Records persist across sessions until a Stop with no regression clears them. Not available for OpenCode.",
@@ -157,6 +160,7 @@ const runInstallAction = async (positional: string[], opts: InstallOpts): Promis
 				dryRun: Boolean(opts.dryRun),
 				yes: Boolean(opts.yes),
 				qualityGate: Boolean(opts.qualityGate),
+				forceTemporary: Boolean(opts.forceTemporary),
 				explicitScope: Boolean(opts.global || opts.project),
 			});
 			return { exitCode: 0 };
@@ -206,6 +210,14 @@ const registerUninstall = (hook: Command): void => {
 				"Remove hooks for one or more coding agents. Use positional agents, per-agent flags, or --agent.",
 			),
 	).action(runUninstallAction);
+};
+
+const registerRuntime = (hook: Command): void => {
+	hook
+		.command("runtime")
+		.description("Show the resolved hook runtime paths")
+		.option("--json", "print JSON")
+		.action(() => printHookRuntime(process.argv.includes("--json")));
 };
 
 const registerCallbacks = (hook: Command): void => {
@@ -280,6 +292,7 @@ export const registerHookCommand = (program: Command): void => {
 		.description("Manage per-edit coding-agent hooks");
 	registerInstall(hook);
 	registerUninstall(hook);
+	registerRuntime(hook);
 	registerCallbacks(hook);
 };
 

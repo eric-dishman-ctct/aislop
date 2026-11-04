@@ -4,7 +4,7 @@ title: "PATH-independent hook commands"
 summary: "Make every aislop hook run without PATH lookup of aislop or node, per KD-007: install-time resolver, per-host command builders, run-time resolution in plugins, a temporary-install guard, and hook doctor"
 status: in-progress
 created: 2026-11-03T15:47:37
-updated: 2026-11-04T08:11:51
+updated: 2026-11-04T08:35:46
 tags: ["aislop", "hooks", "path"]
 ---
 
@@ -12,7 +12,7 @@ tags: ["aislop", "hooks", "path"]
 
 ## Status
 
-Accepted, revision 2 after two plan review rounds. Round 2 findings are folded in as C5. Decision [KD-007](../decisions/20261103T140509--hook-command-embeds-node-and-cli-paths__aislop.md)
+In progress. U1 passed review, commit pending. Accepted revision 2 after two plan review rounds. Round 2 findings are folded in as C5. Decision [KD-007](../decisions/20261103T140509--hook-command-embeds-node-and-cli-paths__aislop.md)
 accepted. No unit started. Baseline for all reviews: the commit that lands this plan.
 
 ## Context
@@ -60,22 +60,21 @@ in KD-007.
 Risk: MEDIUM. One worker, one execution reviewer. Consequence of a defect: a wrong path
 written into every hook, or a durable hook pointing into an npx cache.
 
-- [ ] `src/hooks/runtime/resolve.ts`: `resolveHookRuntime()` returns `{nodePath, cliPath, version}` from `process.execPath` and `import.meta.url` of the running CLI, with `fs.realpathSync` applied to both
-- [ ] `isTemporaryExecution(cliPath)` detects `_npx`, `.bun/install/cache`, `pnpm/dlx`, `.yarn/$$` style cache paths
-- [ ] Reuse `src/ui/invocation.ts` logic and move it here
-- [ ] Runtime file `hook-runtime.json` with `{schema: 1, nodePath, cliPath, version, writtenAt}`. Global scope writes `~/.aislop/hook-runtime.json`. Project scope writes `.aislop/hook-runtime.json`. Readers prefer the project file, then the global file
-- [ ] `readHookRuntime(dir)` validates `schema === 1`, string paths, and that both paths exist on disk. A failed check returns `{status: "missing" | "invalid" | "stale", ...}` and never throws
-- [ ] `hook install --project` prints a reminder that `.aislop/hook-runtime.json` holds machine paths. `aislop init` adds it, `session.jsonl`, and lock files to the generated `.gitignore` snippet
-- [ ] `hook install` refuses with exit 1 and a stable-install hint when `isTemporaryExecution` is true and the install would persist any absolute path: an absolute command string, an `exec` entry, or a runtime file. Plugin installs count, because the runtime file is durable
-- [ ] `--force-temporary` overrides with a warning on stderr
-- [ ] Per-host command builders in `src/hooks/runtime/command.ts`: `posixQuoted(node, cli, args)`, `powerShellQuoted(...)`, `copilotExec(node, cli, args)`. Each handles spaces, backslashes, single and double quotes. No `cmd.exe` builder, because no installer targets `cmd.exe`
-- [ ] `selectShellBuilder(platform)` returns the POSIX builder on Linux and macOS and the PowerShell builder on `win32`
-- [ ] `aislop hook runtime [--json]` prints the resolved pair and the temporary flag, for the built-CLI test and for doctor
-- [ ] Built-CLI test: run `node dist/cli.js hook runtime --json` after `pnpm build` and assert `cliPath` ends with `dist/cli.js` and equals its realpath. A second case runs through a symlink that imitates a global install and asserts the realpath, not the symlink
-- [ ] Each handles spaces, backslashes, single and double quotes
-- [ ] Tests red-first for every Mechanisms row marked U1, `Test` column added
-- [ ] Gates captured
-- [ ] Independent review PASS
+- [x] `src/hooks/runtime/resolve.ts`: `resolveHookRuntime()` returns `{nodePath, cliPath, version}` from `process.execPath` and `import.meta.url` of the running CLI, with `fs.realpathSync` applied to both ([u1-gates](../evidence/20261103-u1-gates.md))
+- [x] `isTemporaryExecution(cliPath)` detects `_npx`, `.bun/install/cache`, `pnpm/dlx`, `.yarn/$$` style cache paths ([u1-gates](../evidence/20261103-u1-gates.md))
+- [x] Reuse `src/ui/invocation.ts` logic and move it here ([u1-gates](../evidence/20261103-u1-gates.md))
+- [x] Runtime file `hook-runtime.json` with `{schema: 1, nodePath, cliPath, version, writtenAt}`. Global scope writes `~/.aislop/hook-runtime.json`. Project scope writes `.aislop/hook-runtime.json`. Readers prefer the project file, then the global file ([u1-gates](../evidence/20261103-u1-gates.md))
+- [x] `readHookRuntime(dir)` validates `schema === 1`, string paths, and that both paths exist on disk. A failed check returns `{status: "missing" | "invalid" | "stale", ...}` and never throws ([u1-gates](../evidence/20261103-u1-gates.md))
+- [x] `hook install --project` prints a reminder that `.aislop/hook-runtime.json` holds machine paths. `aislop init` adds it, `session.jsonl`, and lock files to the generated `.gitignore` snippet ([u1-gates](../evidence/20261103-u1-gates.md))
+- [x] `hook install` refuses with exit 1 and a stable-install hint when `isTemporaryExecution` is true and the install would persist any absolute path: an absolute command string, an `exec` entry, or a runtime file. Plugin installs count, because the runtime file is durable ([u1-gates](../evidence/20261103-u1-gates.md))
+- [x] `--force-temporary` overrides with a warning on stderr ([u1-gates](../evidence/20261103-u1-gates.md))
+- [x] Per-host command builders in `src/hooks/runtime/command.ts`: `posixQuoted(node, cli, args)`, `powerShellQuoted(...)`, `copilotExec(node, cli, args)`. Each handles spaces, backslashes, single and double quotes. No `cmd.exe` builder, because no installer targets `cmd.exe` ([u1-gates](../evidence/20261103-u1-gates.md))
+- [x] `selectShellBuilder(platform)` returns the POSIX builder on Linux and macOS and the PowerShell builder on `win32` ([u1-gates](../evidence/20261103-u1-gates.md))
+- [x] `aislop hook runtime [--json]` prints the resolved pair and the temporary flag, for the built-CLI test and for doctor ([u1-gates](../evidence/20261103-u1-gates.md))
+- [x] Built-CLI test: run `node dist/cli.js hook runtime --json` after `pnpm build` and assert `cliPath` ends with `dist/cli.js` and equals its realpath. A second case runs through a symlink that imitates a global install and asserts the realpath, not the symlink ([u1-gates](../evidence/20261103-u1-gates.md))
+- [x] Tests red-first for every Mechanisms row marked U1, `Test` column added ([u1-gates](../evidence/20261103-u1-gates.md))
+- [x] Gates captured: [u1-gates](../evidence/20261103-u1-gates.md)
+- [x] Independent review PASS (round 2, zero findings) ([u1-gates](../evidence/20261103-u1-gates.md))
 - [ ] Commit
 
 ### Phase 2: shell-string installers (U2)
@@ -145,19 +144,19 @@ Risk: LOW. Orchestrator runs existing tools and live checks.
 
 ## Mechanisms
 
-| Mechanism | Property that must hold | Literal value |
-| --- | --- | --- |
-| U1 resolver realpath | Both paths are canonical and exist | `fs.realpathSync` on `process.execPath` and the cli path |
-| U1 temporary detection | Known cache paths are detected, normal paths are not | `_npx`, `.bun/install/cache`, `dlx`, yarn `$$` segments |
-| U1 install refusal | A temporary execution writes no absolute command and exits 1 | exit code 1, no file written |
-| U1 force flag | `--force-temporary` writes anyway with a warning on stderr | warning text contains `temporary` |
-| U1 POSIX builder | Spaces and quotes in either path survive `sh -c` | round trip through `sh -c` yields the original argv |
-| U1 PowerShell builder | Output starts with the call operator and quotes both paths | `& '...' '...'`, apostrophes doubled |
-| U1 Copilot exec builder | No shell string, `exec` is the node path, `args[0]` is the cli path | object shape |
-| U1 builder selection | `win32` selects PowerShell, other platforms select POSIX | `selectShellBuilder` |
-| U1 runtime file write | Global install writes the home file, project install writes the project file, both with schema 1 | two paths |
-| U1 runtime file read | Missing, invalid, and stale each return their status and never throw | three statuses |
-| U1 built-CLI resolution | `dist/cli.js` resolves to its own realpath, through a symlink too | built test |
+| Mechanism | Property that must hold | Literal value | Test |
+| --- | --- | --- | --- |
+| U1 resolver realpath | Both paths are canonical and exist | `fs.realpathSync` on `process.execPath` and the cli path | `runtime.test.ts`: resolver realpath |
+| U1 temporary detection | Known cache paths are detected, normal paths are not | `_npx`, `.bun/install/cache`, `dlx`, yarn `$$` segments | `runtime.test.ts`: temporary detection |
+| U1 install refusal | A temporary execution writes no absolute command and exits 1 | exit code 1, no file written | `runtime-install.test.ts`: install refusal |
+| U1 force flag | `--force-temporary` writes anyway with a warning on stderr | warning text contains `temporary` | `runtime-install.test.ts`: force flag |
+| U1 POSIX builder | Spaces and quotes in either path survive `sh -c` | round trip through `sh -c` yields the original argv | `runtime.test.ts`: POSIX builder |
+| U1 PowerShell builder | Output starts with the call operator and quotes both paths | `& '...' '...'`, apostrophes doubled | `runtime.test.ts`: PowerShell builder |
+| U1 Copilot exec builder | No shell string, `exec` is the node path, `args[0]` is the cli path | object shape | `runtime.test.ts`: Copilot exec builder |
+| U1 builder selection | `win32` selects PowerShell, other platforms select POSIX | `selectShellBuilder` | `runtime.test.ts`: builder selection |
+| U1 runtime file write | Global install writes the home file, project install writes the project file, both with schema 1 | two paths | `runtime.test.ts`: runtime file write |
+| U1 runtime file read | Missing, invalid, and stale each return their status and never throw | three statuses | `runtime.test.ts`: runtime file read |
+| U1 built-CLI resolution | `dist/cli.js` resolves to its own realpath, through a symlink too | built test | `runtime-built.test.ts`: built-CLI resolution |
 | U2 scope default | Global absolute, project portable, unless `--absolute` | `opts.absolute` resolution table |
 | U2 project reminder | `--absolute` with project scope prints the do-not-commit reminder | stderr text |
 | U2 portable form unchanged | With `absolute: false` every installer emits the wave-1 literal | `aislop hook <agent>` |
@@ -184,7 +183,7 @@ Risk: LOW. Orchestrator runs existing tools and live checks.
 
 | Gate | Criterion | Target | Measured | Status |
 | --- | --- | --- | --- | --- |
-| G1 | U1 Mechanisms rows with a reviewer-confirmed deletion-discriminating test | 11 of 11 | | [ ] |
+| G1 | U1 Mechanisms rows with a reviewer-confirmed deletion-discriminating test | 11 of 11 | 11 of 11, [u1-gates](../evidence/20261103-u1-gates.md) | [x] |
 | G2 | U2 rows with a reviewer-confirmed test | 7 of 7 | | [ ] |
 | G3 | U3 rows with a reviewer-confirmed test | 6 of 6 | | [ ] |
 | G4 | U4 rows with a reviewer-confirmed test | 8 of 8 | | [ ] |
@@ -200,6 +199,8 @@ Risk: LOW. Orchestrator runs existing tools and live checks.
 | --- | --- | --- | --- | --- | --- |
 | design | 1 | ENDORSE WITH CHANGES, folded into KD-007 | 3 | 4 | 2026-11-03 |
 | plan | 1 | BLOCK, all findings folded into revision 2 | 6 | 3 | 2026-11-03 |
+| U1 | 1 | BLOCK: private preferred reader discarded with void, cliPath realpath not discriminated, five unpinned edge cases | 2 | 5 | 2026-11-03 |
+| U1 | 2 | PASS, all eight round-1 survivors fail named tests, zero findings | 0 | 0 | 2026-11-03 |
 | plan | 2 | BLOCK, three findings folded into the text and C5. Round cap reached, plan accepted by the user with C5 mandatory | 3 | 0 | 2026-11-03 |
 
 ## Carried findings
