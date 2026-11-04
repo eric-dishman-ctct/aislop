@@ -1,11 +1,14 @@
 import path from "node:path";
 import { AISLOP_MD_BODY } from "../assets.js";
+import type { ShellCommandBuilder } from "../runtime/command.js";
 import { readIfExists } from "../io/atomic-write.js";
 import { AISLOP_SENTINEL_KEY, removeAislopEntries, upsertHookGroup } from "../io/json-patch.js";
 import { sentinelHash, upsertMarkdownFence } from "../io/sentinel.js";
+import { buildHookCommand, commandBuilderFor } from "./command.js";
 import {
 	applyContent,
 	applyRemoval,
+	markPortableRewrite,
 	emptyResult,
 	type HookInstallOpts,
 	type HookInstallResult,
@@ -28,18 +31,16 @@ export const resolveGeminiPaths = (opts: HookInstallOpts): GeminiPaths => {
 	};
 };
 
-const buildHookGroup = () => {
-	const hashBody = JSON.stringify({
-		command: "aislop hook gemini",
-		matcher: "write_file|replace",
-	});
+const buildHookGroup = (builder: ShellCommandBuilder | null) => {
+	const command = buildHookCommand(builder, "gemini");
+	const hashBody = JSON.stringify({ command, matcher: "write_file|replace" });
 	return {
 		matcher: "write_file|replace",
 		hooks: [
 			{
 				name: "aislop",
 				type: "command",
-				command: "aislop hook gemini",
+				command,
 				timeout: 5000,
 				[AISLOP_SENTINEL_KEY]: {
 					v: 1,
@@ -51,7 +52,10 @@ const buildHookGroup = () => {
 	};
 };
 
-const renderSettings = (existingRaw: string | null): string => {
+const renderSettings = (
+	existingRaw: string | null,
+	builder: ShellCommandBuilder | null,
+): string => {
 	let obj: Record<string, unknown> = {};
 	if (existingRaw) {
 		try {
@@ -60,7 +64,7 @@ const renderSettings = (existingRaw: string | null): string => {
 			obj = {};
 		}
 	}
-	const next = upsertHookGroup(obj, "AfterTool", buildHookGroup());
+	const next = upsertHookGroup(obj, "AfterTool", buildHookGroup(builder));
 	return `${JSON.stringify(next, null, 2)}\n`;
 };
 
@@ -68,7 +72,9 @@ export const installGemini = (opts: HookInstallOpts): HookInstallResult => {
 	const paths = resolveGeminiPaths(opts);
 	const result = emptyResult();
 
-	const next = renderSettings(readIfExists(paths.settings));
+	const existingSettings = readIfExists(paths.settings);
+	const next = renderSettings(existingSettings, commandBuilderFor(opts));
+	markPortableRewrite(result, opts, existingSettings, ["aislop hook gemini"]);
 	applyContent(result, opts, paths.settings, next, "register AfterTool hook");
 
 	const existingMd = readIfExists(paths.aislopMd);

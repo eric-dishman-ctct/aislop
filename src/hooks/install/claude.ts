@@ -1,12 +1,15 @@
 // aislop-ignore-file duplicate-block
 import path from "node:path";
 import { AISLOP_MD_BODY } from "../assets.js";
+import type { ShellCommandBuilder } from "../runtime/command.js";
 import { readIfExists } from "../io/atomic-write.js";
 import { AISLOP_SENTINEL_KEY, removeAislopEntries, upsertHookGroup } from "../io/json-patch.js";
 import { sentinelHash, upsertMarkdownFence } from "../io/sentinel.js";
+import { buildHookCommand, commandBuilderFor } from "./command.js";
 import {
 	applyContent,
 	applyRemoval,
+	markPortableRewrite,
 	emptyResult,
 	type HookInstallOpts,
 	type HookInstallResult,
@@ -29,40 +32,31 @@ export const resolveClaudePaths = (opts: HookInstallOpts): ClaudePaths => {
 	};
 };
 
-export const buildHookGroup = () => {
-	const hashBody = JSON.stringify({
-		command: "aislop hook claude",
-		matcher: "Edit|Write|MultiEdit",
-	});
+export const buildHookGroup = (builder: ShellCommandBuilder | null = null) => {
+	const command = buildHookCommand(builder, "claude");
+	const hashBody = JSON.stringify({ command, matcher: "Edit|Write|MultiEdit" });
 	return {
 		matcher: "Edit|Write|MultiEdit",
 		hooks: [
 			{
 				type: "command",
-				command: "aislop hook claude",
-				[AISLOP_SENTINEL_KEY]: {
-					v: 1,
-					managed: true,
-					hash: sentinelHash(hashBody),
-				},
+				command,
+				[AISLOP_SENTINEL_KEY]: { v: 1, managed: true, hash: sentinelHash(hashBody) },
 			},
 		],
 	};
 };
 
-export const buildStopHookGroup = () => {
-	const hashBody = JSON.stringify({ command: "aislop hook claude --stop" });
+export const buildStopHookGroup = (builder: ShellCommandBuilder | null = null) => {
+	const command = buildHookCommand(builder, "claude", ["--stop"]);
+	const hashBody = JSON.stringify({ command });
 	return {
 		matcher: "",
 		hooks: [
 			{
 				type: "command",
-				command: "aislop hook claude --stop",
-				[AISLOP_SENTINEL_KEY]: {
-					v: 1,
-					managed: true,
-					hash: sentinelHash(hashBody),
-				},
+				command,
+				[AISLOP_SENTINEL_KEY]: { v: 1, managed: true, hash: sentinelHash(hashBody) },
 			},
 		],
 	};
@@ -73,28 +67,26 @@ export const buildStopHookGroup = () => {
 const FILE_CHANGED_MATCHER =
 	".aislop/config.yml|.aislop/config.yaml|.aislop/rules.yml|.aislop/rules.yaml|package.json";
 
-const buildFileChangedHookGroup = () => {
-	const hashBody = JSON.stringify({
-		command: "aislop hook claude --on-file-changed",
-		matcher: FILE_CHANGED_MATCHER,
-	});
+const buildFileChangedHookGroup = (builder: ShellCommandBuilder | null) => {
+	const command = buildHookCommand(builder, "claude", ["--on-file-changed"]);
+	const hashBody = JSON.stringify({ command, matcher: FILE_CHANGED_MATCHER });
 	return {
 		matcher: FILE_CHANGED_MATCHER,
 		hooks: [
 			{
 				type: "command",
-				command: "aislop hook claude --on-file-changed",
-				[AISLOP_SENTINEL_KEY]: {
-					v: 1,
-					managed: true,
-					hash: sentinelHash(hashBody),
-				},
+				command,
+				[AISLOP_SENTINEL_KEY]: { v: 1, managed: true, hash: sentinelHash(hashBody) },
 			},
 		],
 	};
 };
 
-const renderSettings = (existingRaw: string | null, qualityGate: boolean): string => {
+const renderSettings = (
+	existingRaw: string | null,
+	qualityGate: boolean,
+	builder: ShellCommandBuilder | null,
+): string => {
 	let obj: Record<string, unknown> = {};
 	if (existingRaw) {
 		try {
@@ -103,9 +95,9 @@ const renderSettings = (existingRaw: string | null, qualityGate: boolean): strin
 			obj = {};
 		}
 	}
-	let next = upsertHookGroup(obj, "PostToolUse", buildHookGroup());
-	next = upsertHookGroup(next, "FileChanged", buildFileChangedHookGroup());
-	if (qualityGate) next = upsertHookGroup(next, "Stop", buildStopHookGroup());
+	let next = upsertHookGroup(obj, "PostToolUse", buildHookGroup(builder));
+	next = upsertHookGroup(next, "FileChanged", buildFileChangedHookGroup(builder));
+	if (qualityGate) next = upsertHookGroup(next, "Stop", buildStopHookGroup(builder));
 	else next = removeAislopEntries(next, "Stop").next;
 	return `${JSON.stringify(next, null, 2)}\n`;
 };
@@ -114,7 +106,17 @@ export const installClaude = (opts: HookInstallOpts): HookInstallResult => {
 	const paths = resolveClaudePaths(opts);
 	const result = emptyResult();
 
-	const nextSettings = renderSettings(readIfExists(paths.settings), Boolean(opts.qualityGate));
+	const existingSettings = readIfExists(paths.settings);
+	const nextSettings = renderSettings(
+		existingSettings,
+		Boolean(opts.qualityGate),
+		commandBuilderFor(opts),
+	);
+	markPortableRewrite(result, opts, existingSettings, [
+		"aislop hook claude",
+		"aislop hook claude --stop",
+		"aislop hook claude --on-file-changed",
+	]);
 	applyContent(
 		result,
 		opts,

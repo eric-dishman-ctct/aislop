@@ -16,7 +16,7 @@ aislop catches them. 50+ rules across 11 language targets (TypeScript, JavaScrip
 npx aislop@latest scan
 ```
 
-**2. Install the hook** so your coding agent fixes slop before it lands, on every edit. The hook calls `aislop` directly, so install the CLI first.
+**2. Install the hook** so your coding agent fixes slop before it lands, on every edit. Install the CLI first.
 
 ```bash
 npm install -g aislop && aislop hook install
@@ -288,10 +288,12 @@ aislop install hooks --claude          # natural alias for hook install
 
 | Agent | Hook support | Requirements and limits |
 |---|---|---|
-| GitHub Copilot | Runtime hook, Preview | Requires VS Code 1.144.0 or later, or Copilot CLI 1.0.105 or later. Trust the folder with `--trust-folder` or `trustedFolders` before hooks run. Run `aislop hook baseline` before `--quality-gate`. The gate rescans files recorded from Edit, Write, and MultiEdit calls. It does not see shell edits to unrecorded files. Records persist across sessions until a Stop with no regression clears them. Native camelCase payloads are unsupported. Copilot scans report `claude` telemetry. |
+| GitHub Copilot | Runtime hook, Preview | Requires VS Code 1.144.0 or later, or Copilot CLI 1.0.105 or later. Trust the folder with `--trust-folder` or `trustedFolders` before hooks run. Quit and relaunch VS Code after install. nvm adds Node to shell startup paths, but VS Code hooks do not use that path. Run `aislop hook baseline` before `--quality-gate`. The gate rescans files recorded from Edit, Write, and MultiEdit calls. It does not see shell edits to unrecorded files. Records persist across sessions until a Stop with no regression clears them. Native camelCase payloads are unsupported. Copilot scans report `claude` telemetry. |
 | OpenCode | Runtime hook | Requires OpenCode 2.2.4 or later. Install at the global or project scope. OpenCode has no quality gate. Shell-tool edits do not fire a file hook. |
 
-Hook install flags: `--agent <names>`, `-g, --global`, `--project`, `--dry-run`, `--yes`, `--quality-gate`, plus per-agent shortcuts `--claude`, `--cursor`, `--gemini`, `--pi`, `--codex`, `--windsurf`, `--cline`, `--kilocode`, `--antigravity`, `--copilot`, `--opencode`.
+Global installs use absolute Node and CLI paths. Project installs use portable commands. Use `--absolute` for project machine paths. Do not commit the hook file. Run `aislop hook install` after you upgrade Node or aislop. Windows builders are unverified.
+
+Hook install flags: `--agent <names>`, `-g, --global`, `--project`, `--absolute`, `--dry-run`, `--yes`, `--quality-gate`, plus per-agent shortcuts `--claude`, `--cursor`, `--gemini`, `--pi`, `--codex`, `--windsurf`, `--cline`, `--kilocode`, `--antigravity`, `--copilot`, `--opencode`.
 
 **Quality-gate mode**: Blocks if score regresses below baseline.
 

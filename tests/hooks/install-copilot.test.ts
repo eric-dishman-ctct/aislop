@@ -2,6 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { sentinelHash } from "../../src/hooks/io/sentinel.js";
 import {
 	installCopilot,
 	resolveCopilotPaths,
@@ -21,11 +22,12 @@ afterEach(() => {
 	fs.rmSync(cwd, { recursive: true, force: true });
 });
 
-const opts = (scope: "global" | "project", qualityGate = false) => ({
+const opts = (scope: "global" | "project", qualityGate = false, absolute = false) => ({
 	home,
 	cwd,
 	scope,
 	qualityGate,
+	absolute,
 });
 
 const fixture = (name: string): string =>
@@ -34,7 +36,9 @@ const fixture = (name: string): string =>
 describe("Copilot runtime hooks", () => {
 	it("matches the accepted hook-file groups without a version or FileChanged group", () => {
 		installCopilot(opts("project", true));
-		const generated = JSON.parse(fs.readFileSync(resolveCopilotPaths(opts("project")).hookFile, "utf8"));
+		const generated = JSON.parse(
+			fs.readFileSync(resolveCopilotPaths(opts("project")).hookFile, "utf8"),
+		);
 		const capture = JSON.parse(fixture("copilot-B-hookfile.json"));
 		capture.hooks.PostToolUse[0].hooks[0].command = "aislop hook claude";
 		capture.hooks.Stop[0].hooks[0].command = "aislop hook claude --stop";
@@ -44,6 +48,58 @@ describe("Copilot runtime hooks", () => {
 		expect(generated.hooks.Stop).toEqual(capture.hooks.Stop);
 		expect(generated).not.toHaveProperty("version");
 		expect(Object.keys(generated.hooks).sort()).toEqual(["PostToolUse", "Stop"]);
+	});
+
+	it("uses exec and args only for the absolute form", () => {
+		installCopilot(opts("project", true, false));
+		const paths = resolveCopilotPaths(opts("project"));
+		const portable = JSON.parse(fs.readFileSync(paths.hookFile, "utf8"));
+		installCopilot(opts("project", true, true));
+		const absolute = JSON.parse(fs.readFileSync(paths.hookFile, "utf8"));
+		const capture = JSON.parse(fixture("copilot-B-hookfile.json"));
+		for (const event of ["PostToolUse", "Stop"] as const) {
+			const before = portable.hooks[event][0].hooks[0];
+			const after = absolute.hooks[event][0].hooks[0];
+			expect(absolute.hooks[event][0].matcher).toBe(capture.hooks[event][0].matcher);
+			expect(after).not.toHaveProperty("command");
+			expect(after.exec).toBeTypeOf("string");
+			expect(after.args).toEqual(expect.arrayContaining(["hook", "claude"]));
+			if (event === "Stop") {
+				expect(after.args.slice(-3)).toEqual(["hook", "claude", "--stop"]);
+			} else {
+				expect(after.args.slice(-2)).toEqual(["hook", "claude"]);
+			}
+			expect(after.__aislop.hash).not.toBe(before.__aislop.hash);
+			expect(after.__aislop.hash).toBe(
+				sentinelHash(
+					JSON.stringify({
+						exec: after.exec,
+						args: after.args,
+						matcher: absolute.hooks[event][0].matcher,
+					}),
+				),
+			);
+			expect({ ...after, exec: undefined, args: undefined }).toMatchObject({
+				type: before.type,
+				__aislop: { v: 1, managed: true },
+			});
+		}
+		if (absolute.hooks.FileChanged) {
+			const after = absolute.hooks.FileChanged[0].hooks[0];
+			expect(absolute.hooks.FileChanged[0].matcher).toBe(capture.hooks.FileChanged[0].matcher);
+			expect(after.args.slice(-3)).toEqual(["hook", "claude", "--on-file-changed"]);
+		}
+	});
+
+	it("rewrites a portable global entry during an absolute reinstall", () => {
+		installCopilot(opts("global", false, false));
+		const paths = resolveCopilotPaths(opts("global"));
+		const portable = fs.readFileSync(paths.hookFile, "utf8");
+		const result = installCopilot(opts("global", false, true));
+		expect(result.rewrittenFromPortable).toBe(true);
+		const absolute = fs.readFileSync(paths.hookFile, "utf8");
+		expect(absolute).not.toBe(portable);
+		expect(JSON.parse(absolute).hooks.PostToolUse[0].hooks[0]).toHaveProperty("exec");
 	});
 
 	it("adds Stop only when qualityGate is true and remains idempotent", () => {
@@ -78,7 +134,8 @@ describe("Copilot runtime hooks", () => {
 		const paths = resolveCopilotPaths(opts("project"));
 		fs.mkdirSync(path.dirname(paths.hookFile), { recursive: true });
 		fs.mkdirSync(path.dirname(paths.instructionsFile), { recursive: true });
-		const hooks = '{\n  "hooks": { "PostToolUse": [{ "matcher": "Bash", "hooks": [{ "command": "keep" }] }] }\n}\n';
+		const hooks =
+			'{\n  "hooks": { "PostToolUse": [{ "matcher": "Bash", "hooks": [{ "command": "keep" }] }] }\n}\n';
 		const instructions = "# User instructions\nKeep this text.\n";
 		fs.writeFileSync(paths.hookFile, hooks);
 		fs.writeFileSync(paths.instructionsFile, instructions);
@@ -115,7 +172,9 @@ const assertCaptureFixture = (capture: unknown): void => {
 	expect(first).toBeTypeOf("object");
 	expect(first).not.toBeNull();
 	const event = first as Record<string, unknown>;
-	expect(typeof event.hook_event_name === "string" || typeof event.toolName === "string").toBe(true);
+	expect(typeof event.hook_event_name === "string" || typeof event.toolName === "string").toBe(
+		true,
+	);
 };
 
 describe("Copilot fixture captures", () => {

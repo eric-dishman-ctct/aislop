@@ -64,6 +64,7 @@ interface InstallFlags {
 	dryRun: boolean;
 	yes: boolean;
 	qualityGate: boolean;
+	absolute?: boolean;
 	explicitScope?: boolean;
 }
 
@@ -71,6 +72,7 @@ interface HookInstallRenderItem {
 	agent: AgentName;
 	scope: "global" | "project";
 	result: HookInstallResult;
+	absolute?: boolean;
 }
 
 interface HookUninstallRenderItem {
@@ -85,12 +87,13 @@ interface HookOperationRenderItem {
 	rows: DisplayRow[];
 }
 
-const resolveOpts = (agent: AgentName, flags: InstallFlags): HookInstallOpts => {
+export const resolveHookInstallOpts = (agent: AgentName, flags: InstallFlags): HookInstallOpts => {
 	const scope: "global" | "project" = AGENTS_PROJECT_ONLY.includes(agent) ? "project" : flags.scope;
 	return {
 		home: os.homedir(),
 		cwd: process.cwd(),
 		scope,
+		absolute: Boolean(flags.absolute) || scope === "global",
 		dryRun: flags.dryRun,
 		qualityGate: flags.qualityGate,
 	};
@@ -110,14 +113,17 @@ export const hookInstall = async (
 	const items: HookInstallRenderItem[] = [];
 	const runtimeScopes = new Set<"global" | "project">();
 	for (const agent of flags.agents) {
-		const opts = resolveOpts(agent, flags);
+		const opts = resolveHookInstallOpts(agent, flags);
 		const result = REGISTRY[agent].install(opts);
-		items.push({ agent, scope: opts.scope, result });
+		items.push({ agent, scope: opts.scope, result, absolute: Boolean(opts.absolute) });
 		runtimeScopes.add(opts.scope);
 	}
 	if (!flags.dryRun) writeInstalledHookRuntimes(runtimeScopes);
 	if (flags.scope === "project") {
 		process.stdout.write("Reminder: .aislop/hook-runtime.json holds machine paths.\n");
+		if (flags.absolute) {
+			process.stderr.write("Reminder: do not commit hook files with absolute machine paths.\n");
+		}
 	}
 	process.stdout.write(renderHookInstall({ dryRun: flags.dryRun, items }));
 };
@@ -128,9 +134,9 @@ export const hookUninstall = async (flags: InstallFlags): Promise<void> => {
 		const scopes =
 			!flags.explicitScope && AGENTS_SUPPORTING_BOTH_SCOPES.includes(agent)
 				? (["global", "project"] as const)
-				: [resolveOpts(agent, flags).scope];
+				: [resolveHookInstallOpts(agent, flags).scope];
 		for (const scope of scopes) {
-			const opts = { ...resolveOpts(agent, flags), scope };
+			const opts = { ...resolveHookInstallOpts(agent, flags), scope };
 			if (
 				!flags.explicitScope &&
 				!scopeHasManagedMarker(agent, { home: opts.home, cwd: opts.cwd, scope })
@@ -183,12 +189,21 @@ const renderHookOperation = (input: {
 };
 
 const installRows = (item: HookInstallRenderItem, dryRun: boolean): DisplayRow[] => {
-	const rows: DisplayRow[] = [{ label: "Scope", value: item.scope }];
+	const rows: DisplayRow[] = [
+		{ label: "Scope", value: item.scope },
+		{
+			label: "Command",
+			value: item.absolute ? "absolute Node and CLI paths" : "portable aislop command",
+		},
+	];
 	if (dryRun) {
 		for (const op of item.result.planned) {
 			rows.push({ label: "Path", value: op.path }, { label: "Change", value: op.summary });
 		}
 		return rows;
+	}
+	if (item.result.rewrittenFromPortable) {
+		rows.push({ label: "Rewrote portable command", value: "absolute Node and CLI paths" });
 	}
 	for (const path of item.result.wrote) rows.push({ label: "Wrote", value: path });
 	for (const path of item.result.skipped) rows.push({ label: "Skipped", value: path });
@@ -243,7 +258,9 @@ export const hookStatus = async (): Promise<void> => {
 		const scopes = AGENTS_SUPPORTING_BOTH_SCOPES.includes(agent)
 			? (["global", "project"] as const)
 			: [defaultScopeFor(agent)];
-		const targets = scopes.flatMap((scope) => REGISTRY[agent].paths({ home, cwd, scope }));
+		const targets = scopes.flatMap((scope) =>
+			REGISTRY[agent].paths({ home, cwd, scope, absolute: scope === "global" }),
+		);
 		return {
 			agent,
 			scope: scopes.join(" + "),

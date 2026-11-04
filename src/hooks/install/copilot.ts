@@ -1,12 +1,15 @@
 import path from "node:path";
 import { AISLOP_MD_BODY } from "../assets.js";
+import { copilotExec } from "../runtime/command.js";
+import { resolveHookRuntime } from "../runtime/resolve.js";
 import { readIfExists } from "../io/atomic-write.js";
-import { removeAislopEntries, upsertHookGroup } from "../io/json-patch.js";
+import { AISLOP_SENTINEL_KEY, removeAislopEntries, upsertHookGroup } from "../io/json-patch.js";
 import { removeMarkdownFence, sentinelHash, upsertMarkdownFence } from "../io/sentinel.js";
 import { buildHookGroup, buildStopHookGroup } from "./claude.js";
 import {
 	applyContent,
 	applyRemoval,
+	markPortableRewrite,
 	emptyResult,
 	type HookInstallOpts,
 	type HookInstallResult,
@@ -40,7 +43,33 @@ export const resolveCopilotPaths = (opts: HookInstallOpts): CopilotPaths => ({
 	instructionsFile: path.join(opts.cwd, ".github", "copilot-instructions.md"),
 });
 
-const renderHookFile = (existing: string | null, qualityGate: boolean): string => {
+const copilotHookGroup = (absolute: boolean, flags: string[] = []) => {
+	const portable = !flags.length ? buildHookGroup() : buildStopHookGroup();
+	if (!absolute) return portable;
+	const { nodePath, cliPath } = resolveHookRuntime();
+	const invocation = copilotExec(nodePath, cliPath, ["hook", "claude", ...flags]);
+	const hashBody = JSON.stringify({
+		exec: invocation.exec,
+		args: invocation.args,
+		matcher: portable.matcher,
+	});
+	return {
+		...portable,
+		hooks: [
+			{
+				type: "command",
+				...invocation,
+				[AISLOP_SENTINEL_KEY]: { v: 1, managed: true, hash: sentinelHash(hashBody) },
+			},
+		],
+	};
+};
+
+const renderHookFile = (
+	existing: string | null,
+	qualityGate: boolean,
+	absolute: boolean,
+): string => {
 	let config: Record<string, unknown> = {};
 	if (existing) {
 		try {
@@ -49,8 +78,8 @@ const renderHookFile = (existing: string | null, qualityGate: boolean): string =
 			config = {};
 		}
 	}
-	let next = upsertHookGroup(config, "PostToolUse", buildHookGroup());
-	if (qualityGate) next = upsertHookGroup(next, "Stop", buildStopHookGroup());
+	let next = upsertHookGroup(config, "PostToolUse", copilotHookGroup(absolute));
+	if (qualityGate) next = upsertHookGroup(next, "Stop", copilotHookGroup(absolute, ["--stop"]));
 	else next = removeAislopEntries(next, "Stop").next;
 	return `${JSON.stringify(next, null, 2)}\n`;
 };
@@ -58,11 +87,16 @@ const renderHookFile = (existing: string | null, qualityGate: boolean): string =
 export const installCopilot = (opts: HookInstallOpts): HookInstallResult => {
 	const paths = resolveCopilotPaths(opts);
 	const result = emptyResult();
+	const existingHookFile = readIfExists(paths.hookFile);
+	markPortableRewrite(result, opts, existingHookFile, [
+		"aislop hook claude",
+		"aislop hook claude --stop",
+	]);
 	applyContent(
 		result,
 		opts,
 		paths.hookFile,
-		renderHookFile(readIfExists(paths.hookFile), Boolean(opts.qualityGate)),
+		renderHookFile(existingHookFile, Boolean(opts.qualityGate), Boolean(opts.absolute)),
 		"register Copilot PostToolUse hook",
 	);
 	if (opts.scope === "project") {

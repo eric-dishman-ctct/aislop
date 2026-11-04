@@ -191,13 +191,16 @@ Session review commands:
 | `--agent <names>` | Comma-separated agent list |
 | `-g, --global` | Install to user-scope config |
 | `--project` | Install to project-scope config |
+| `--absolute` | Write absolute Node and CLI paths for a project install |
 | `--dry-run` | Print the planned diff without writing |
 | `--yes` | Skip confirmation prompt |
 | `--quality-gate` | Add a Stop hook that blocks when the score regresses below the baseline for Claude and Copilot. The gate rescans files recorded from Edit, Write, and MultiEdit calls. It does not see shell edits to unrecorded files. Records persist across sessions until a Stop with no regression clears them. It is not available for OpenCode. |
 
 Agent shortcut flags: `--claude`, `--cursor`, `--gemini`, `--pi`, `--codex`, `--windsurf`, `--cline`, `--kilocode`, `--antigravity`, `--copilot`, `--opencode`.
 
-Copilot runtime hooks need VS Code 1.144.0 or Copilot CLI 1.0.105 or later, and a trusted folder. The hook command is `aislop hook claude`. The VS Code hook process has the desktop-session `PATH`, which does not include a Node version manager such as nvm. If hooks are silent in VS Code but work in the Copilot CLI, make sure `aislop` and `node` resolve without your shell init, for example with a system-wide Node and a global install. After `aislop hook install`, quit and relaunch VS Code. A window reload does not load a changed hook file.
+Global installs use absolute Node and CLI paths. Project installs use portable commands. Use `--absolute` for project machine paths. Do not commit the hook file. Run `aislop hook install` after you upgrade Node or aislop. Windows builders are unverified.
+
+Copilot runtime hooks need VS Code 1.144.0 or Copilot CLI 1.0.105 or later, and a trusted folder. The hook command is `aislop hook claude`. The VS Code hook process does not use the Node path that nvm adds during shell startup. If hooks are silent in VS Code, use the global absolute install. After `aislop hook install`, quit and relaunch VS Code. A window reload does not load a changed hook file.
 
 Copilot runtime hooks are Preview. They need VS Code 1.144.0 or later, or Copilot CLI 1.0.105 or later. Trust the folder with `--trust-folder` or `trustedFolders` before hooks run. Run `aislop hook baseline` before the quality gate. The gate rescans files recorded from Edit, Write, and MultiEdit calls. It does not see shell edits to unrecorded files. Records persist across sessions until a Stop with no regression clears them. Native camelCase payloads are unsupported. Copilot scans report `claude` telemetry.
 

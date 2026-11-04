@@ -2,6 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { resolveHookRuntime } from "../../src/hooks/runtime/resolve.js";
 import {
 	installCursor,
 	resolveCursorPaths,
@@ -32,6 +33,21 @@ describe("installCursor global", () => {
 		expect(parsed.hooks.afterFileEdit).toHaveLength(1);
 		expect(parsed.hooks.afterFileEdit[0].command).toBe("aislop hook cursor");
 		expect(parsed.hooks.afterFileEdit[0].__aislop.managed).toBe(true);
+	});
+
+	it("uses portable and absolute commands from the selected form", () => {
+		const portable = { home, cwd, scope: "global" as const, absolute: false };
+		installCursor(portable);
+		const paths = resolveCursorPaths(portable);
+		const before = JSON.parse(fs.readFileSync(paths.hooks, "utf8")).hooks.afterFileEdit[0];
+		expect(before.command).toBe("aislop hook cursor");
+		const result = installCursor({ ...portable, absolute: true });
+		expect(result.rewrittenFromPortable).toBe(true);
+		const after = JSON.parse(fs.readFileSync(paths.hooks, "utf8")).hooks.afterFileEdit[0];
+		expect(after.command).toContain(resolveHookRuntime().nodePath);
+		expect(after.command).toContain(resolveHookRuntime().cliPath);
+		expect(after.command).toMatch(/['"]hook['"] ['"]cursor['"]/);
+		expect(after.__aislop.hash).not.toBe(before.__aislop.hash);
 	});
 
 	it("is idempotent", () => {

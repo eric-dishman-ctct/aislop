@@ -1,11 +1,14 @@
 import path from "node:path";
 import { AISLOP_MD_BODY } from "../assets.js";
+import type { ShellCommandBuilder } from "../runtime/command.js";
 import { readIfExists } from "../io/atomic-write.js";
 import { AISLOP_SENTINEL_KEY, removeAislopEntries, upsertFlatHook } from "../io/json-patch.js";
 import { sentinelHash, upsertMarkdownFence } from "../io/sentinel.js";
+import { buildHookCommand, commandBuilderFor } from "./command.js";
 import {
 	applyContent,
 	applyRemoval,
+	markPortableRewrite,
 	emptyResult,
 	type HookInstallOpts,
 	type HookInstallResult,
@@ -27,10 +30,11 @@ export const resolveCursorPaths = (opts: HookInstallOpts): CursorPaths => {
 	};
 };
 
-const buildHookEntry = () => {
-	const hashBody = JSON.stringify({ command: "aislop hook cursor", timeout: 5000 });
+const buildHookEntry = (builder: ShellCommandBuilder | null) => {
+	const command = buildHookCommand(builder, "cursor");
+	const hashBody = JSON.stringify({ command, timeout: 5000 });
 	return {
-		command: "aislop hook cursor",
+		command,
 		type: "command",
 		timeout: 5000,
 		[AISLOP_SENTINEL_KEY]: {
@@ -41,7 +45,10 @@ const buildHookEntry = () => {
 	};
 };
 
-const renderHooksJson = (existingRaw: string | null): string => {
+const renderHooksJson = (
+	existingRaw: string | null,
+	builder: ShellCommandBuilder | null,
+): string => {
 	let obj: Record<string, unknown> = { version: 1 };
 	if (existingRaw) {
 		try {
@@ -51,7 +58,7 @@ const renderHooksJson = (existingRaw: string | null): string => {
 		}
 	}
 	if (typeof obj.version !== "number") obj.version = 1;
-	const next = upsertFlatHook(obj, "afterFileEdit", buildHookEntry());
+	const next = upsertFlatHook(obj, "afterFileEdit", buildHookEntry(builder));
 	return `${JSON.stringify(next, null, 2)}\n`;
 };
 
@@ -59,7 +66,9 @@ export const installCursor = (opts: HookInstallOpts): HookInstallResult => {
 	const paths = resolveCursorPaths(opts);
 	const result = emptyResult();
 
-	const nextHooks = renderHooksJson(readIfExists(paths.hooks));
+	const existingHooks = readIfExists(paths.hooks);
+	const nextHooks = renderHooksJson(existingHooks, commandBuilderFor(opts));
+	markPortableRewrite(result, opts, existingHooks, ["aislop hook cursor"]);
 	applyContent(result, opts, paths.hooks, nextHooks, "register afterFileEdit hook");
 
 	if (opts.scope === "project") {

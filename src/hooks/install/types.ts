@@ -7,6 +7,8 @@ export interface HookInstallOpts {
 	home: string;
 	cwd: string;
 	scope: HookScope;
+	absolute: boolean;
+	platform?: NodeJS.Platform;
 	dryRun?: boolean;
 	qualityGate?: boolean;
 }
@@ -15,6 +17,7 @@ export interface HookInstallResult {
 	wrote: string[];
 	skipped: string[];
 	planned: { path: string; summary: string }[];
+	rewrittenFromPortable?: boolean;
 }
 
 export interface HookUninstallResult {
@@ -27,6 +30,34 @@ export const emptyResult = (): HookInstallResult => ({
 	skipped: [],
 	planned: [],
 });
+
+export const markPortableRewrite = (
+	result: HookInstallResult,
+	opts: HookInstallOpts,
+	existing: string | null,
+	portableCommands: string[],
+): void => {
+	if (opts.scope !== "global" || !opts.absolute || opts.dryRun || existing == null) return;
+	try {
+		const containsPortableCommand = (value: unknown): boolean => {
+			if (Array.isArray(value)) return value.some(containsPortableCommand);
+			if (value == null || typeof value !== "object") return false;
+			const entry = value as Record<string, unknown>;
+			if (
+				typeof entry.command === "string" &&
+				portableCommands.includes(entry.command) &&
+				typeof entry.__aislop === "object" &&
+				entry.__aislop !== null &&
+				(entry.__aislop as Record<string, unknown>).managed === true
+			)
+				return true;
+			return Object.values(entry).some(containsPortableCommand);
+		};
+		if (containsPortableCommand(JSON.parse(existing))) result.rewrittenFromPortable = true;
+	} catch {
+		// The installer replaces invalid JSON without a portable rewrite report.
+	}
+};
 
 export const applyContent = (
 	result: HookInstallResult,

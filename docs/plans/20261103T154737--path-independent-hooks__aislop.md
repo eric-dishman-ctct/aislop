@@ -4,7 +4,7 @@ title: "PATH-independent hook commands"
 summary: "Make every aislop hook run without PATH lookup of aislop or node, per KD-007: install-time resolver, per-host command builders, run-time resolution in plugins, a temporary-install guard, and hook doctor"
 status: in-progress
 created: 2026-11-03T15:47:37
-updated: 2026-11-04T08:35:46
+updated: 2026-11-04T09:03:04
 tags: ["aislop", "hooks", "path"]
 ---
 
@@ -12,7 +12,7 @@ tags: ["aislop", "hooks", "path"]
 
 ## Status
 
-In progress. U1 committed as b47169d. Accepted revision 2 after two plan review rounds. Round 2 findings are folded in as C5. Decision [KD-007](../decisions/20261103T140509--hook-command-embeds-node-and-cli-paths__aislop.md)
+In progress. U1 committed as b47169d. U2 passed review, commit pending. Accepted revision 2 after two plan review rounds. Round 2 findings are folded in as C5. Decision [KD-007](../decisions/20261103T140509--hook-command-embeds-node-and-cli-paths__aislop.md)
 accepted. No unit started. Baseline for all reviews: the commit that lands this plan.
 
 ## Context
@@ -82,18 +82,18 @@ written into every hook, or a durable hook pointing into an npx cache.
 Risk: MEDIUM. One worker, one execution reviewer. Consequence of a defect: a hook that
 never runs, or a committed project file that breaks teammates.
 
-- [ ] `HookInstallOpts` gains `absolute: boolean`. Default: `true` for global scope, `false` for project scope. CLI flag `--absolute` forces `true` for project scope and prints a do-not-commit reminder
-- [ ] Upgrade behaviour: a global reinstall rewrites an existing portable global entry to the absolute form and says so in the install summary. Docs state that `hook install` after a Node or aislop upgrade rewrites global hooks
-- [ ] Claude: `buildHookGroup`, `buildStopHookGroup`, file-changed group take a command builder. Portable form unchanged. Absolute form uses the POSIX builder on Linux and macOS, PowerShell builder on Windows
-- [ ] Cursor and Gemini: same change with their builders and hash bodies
-- [ ] Copilot: absolute form writes `exec` plus `args` entries. Portable form unchanged. Shared builders with Claude keep one matcher
-- [ ] Sentinel hash body includes the written command. Upsert and removal unchanged (key match)
-- [ ] Existing literal-command tests change to structural assertions plus a portable-form literal check. The Copilot fixture-equality test compares the portable form only and stays byte-anchored to `tests/hooks/fixtures/copilot-B-hookfile.json`
-- [ ] New Copilot test: the absolute form keeps the accepted structure from the fixture (same event keys, same matcher `Edit|Write|MultiEdit`, same `__aislop` sentinel placement) and differs only in `exec` and `args` replacing `command`
-- [ ] Docs: README and `docs/commands.md` explain global absolute default, project portable default, `--absolute`, the VS Code full-quit note, and the nvm cause
-- [ ] Tests red-first for every Mechanisms row marked U2, `Test` column added
-- [ ] Gates captured
-- [ ] Independent review PASS
+- [x] `HookInstallOpts` gains `absolute: boolean`. Default: `true` for global scope, `false` for project scope. CLI flag `--absolute` forces `true` for project scope and prints a do-not-commit reminder ([u2-gates](../evidence/20261103-u2-gates.md))
+- [x] Upgrade behaviour: a global reinstall rewrites an existing portable global entry to the absolute form and says so in the install summary. Docs state that `hook install` after a Node or aislop upgrade rewrites global hooks ([u2-gates](../evidence/20261103-u2-gates.md))
+- [x] Claude: `buildHookGroup`, `buildStopHookGroup`, file-changed group take a command builder. Portable form unchanged. Absolute form uses the POSIX builder on Linux and macOS, PowerShell builder on Windows ([u2-gates](../evidence/20261103-u2-gates.md))
+- [x] Cursor and Gemini: same change with their builders and hash bodies ([u2-gates](../evidence/20261103-u2-gates.md))
+- [x] Copilot: absolute form writes `exec` plus `args` entries. Portable form unchanged. Shared builders with Claude keep one matcher ([u2-gates](../evidence/20261103-u2-gates.md))
+- [x] Sentinel hash body includes the written command. Upsert and removal unchanged (key match) ([u2-gates](../evidence/20261103-u2-gates.md))
+- [x] Existing literal-command tests change to structural assertions plus a portable-form literal check. The Copilot fixture-equality test compares the portable form only and stays byte-anchored to `tests/hooks/fixtures/copilot-B-hookfile.json` ([u2-gates](../evidence/20261103-u2-gates.md))
+- [x] New Copilot test: the absolute form keeps the accepted structure from the fixture (same event keys, same matcher `Edit|Write|MultiEdit`, same `__aislop` sentinel placement) and differs only in `exec` and `args` replacing `command` ([u2-gates](../evidence/20261103-u2-gates.md))
+- [x] Docs: README and `docs/commands.md` explain global absolute default, project portable default, `--absolute`, the VS Code full-quit note, and the nvm cause ([u2-gates](../evidence/20261103-u2-gates.md))
+- [x] Tests red-first for every Mechanisms row marked U2, `Test` column added ([u2-gates](../evidence/20261103-u2-gates.md))
+- [x] Gates captured ([u2-gates](../evidence/20261103-u2-gates.md))
+- [x] Independent review PASS ([u2-gates](../evidence/20261103-u2-gates.md))
 - [x] Commit b47169d
 
 ### Phase 3: plugin installers (U3)
@@ -157,13 +157,13 @@ Risk: LOW. Orchestrator runs existing tools and live checks.
 | U1 runtime file write | Global install writes the home file, project install writes the project file, both with schema 1 | two paths | `runtime.test.ts`: runtime file write |
 | U1 runtime file read | Missing, invalid, and stale each return their status and never throw | three statuses | `runtime.test.ts`: runtime file read |
 | U1 built-CLI resolution | `dist/cli.js` resolves to its own realpath, through a symlink too | built test | `runtime-built.test.ts`: built-CLI resolution |
-| U2 scope default | Global absolute, project portable, unless `--absolute` | `opts.absolute` resolution table |
-| U2 project reminder | `--absolute` with project scope prints the do-not-commit reminder | stderr text |
-| U2 portable form unchanged | With `absolute: false` every installer emits the wave-1 literal | `aislop hook <agent>` |
-| U2 Copilot exec entries | Absolute Copilot entries have `exec` and `args`, no `command` | key presence |
-| U2 hash covers command | The sentinel hash changes when the written command changes | `sentinelHash` input |
-| U2 upgrade rewrite | Global reinstall replaces a portable entry with the absolute one | file content after |
-| U2 Copilot structure kept | Absolute entry differs from the fixture only in `exec` and `args` replacing `command` | structural diff |
+| U2 scope default | Global absolute, project portable, unless `--absolute` | `opts.absolute` resolution table | `hook-command.test.ts`: command form; `install-claude.test.ts`: PowerShell builder |
+| U2 project reminder | `--absolute` with project scope prints the do-not-commit reminder | stderr text | `hook-command.test.ts`: project reminder |
+| U2 portable form unchanged | With `absolute: false` every installer emits the wave-1 literal | `aislop hook <agent>` | `install-{claude,cursor,gemini,copilot}.test.ts`: portable form and absolute agent args |
+| U2 Copilot exec entries | Absolute Copilot entries have `exec` and `args`, no `command` | key presence | `install-copilot.test.ts`: absolute form with exact event args |
+| U2 hash covers command | The sentinel hash changes when the written command changes | `sentinelHash` input | `install-{claude,cursor,gemini,copilot}.test.ts`: portable-to-absolute hash change |
+| U2 upgrade rewrite | Global reinstall replaces a portable entry with the absolute one | file content after | `hook-command.test.ts`: global rewrite summary; `install-copilot.test.ts`: global reinstall |
+| U2 Copilot structure kept | Absolute entry differs from the fixture only in `exec` and `args` replacing `command` | structural diff | `install-copilot.test.ts`: fixture matcher and exact args |
 | U3 branch order | `AISLOP_BIN`, then runtime file, then bare | three injected-spawn tests |
 | U3 AISLOP_BIN args | The override is spawned with `["hook", agent]` only | argv shape |
 | U3 runtime file spawn | `spawn(nodePath, [cliPath, "hook", agent])` | argv shape |
@@ -184,7 +184,7 @@ Risk: LOW. Orchestrator runs existing tools and live checks.
 | Gate | Criterion | Target | Measured | Status |
 | --- | --- | --- | --- | --- |
 | G1 | U1 Mechanisms rows with a reviewer-confirmed deletion-discriminating test | 11 of 11 | 11 of 11, [u1-gates](../evidence/20261103-u1-gates.md) | [x] |
-| G2 | U2 rows with a reviewer-confirmed test | 7 of 7 | | [ ] |
+| G2 | U2 rows with a reviewer-confirmed test | 7 of 7 | 7 of 7, [u2-gates](../evidence/20261103-u2-gates.md) | [x] |
 | G3 | U3 rows with a reviewer-confirmed test | 6 of 6 | | [ ] |
 | G4 | U4 rows with a reviewer-confirmed test | 8 of 8 | | [ ] |
 | G5 | Full suite failures after each unit | 0 | | [ ] |
@@ -201,6 +201,8 @@ Risk: LOW. Orchestrator runs existing tools and live checks.
 | plan | 1 | BLOCK, all findings folded into revision 2 | 6 | 3 | 2026-11-03 |
 | U1 | 1 | BLOCK: private preferred reader discarded with void, cliPath realpath not discriminated, five unpinned edge cases | 2 | 5 | 2026-11-03 |
 | U1 | 2 | PASS, all eight round-1 survivors fail named tests, zero findings | 0 | 0 | 2026-11-03 |
+| U2 | 1 | BLOCK: summary silent on portable-to-absolute rewrite, hash and structure tests not discriminating per installer, win32 and agent-arg builders unpinned | 1 | 1 | 2026-11-04 |
+| U2 | 2 | PASS, all eleven round-1 survivors fail named tests, summary idempotent on the built CLI | 0 | 0 | 2026-11-04 |
 | plan | 2 | BLOCK, three findings folded into the text and C5. Round cap reached, plan accepted by the user with C5 mandatory | 3 | 0 | 2026-11-03 |
 
 ## Carried findings
@@ -210,6 +212,8 @@ Risk: LOW. Orchestrator runs existing tools and live checks.
 | C1 | Windows builders unverified without a Windows host | KD-007 | G9, docs label |
 | C2 | pi extension path extraction has no discriminating test (foundation C13) | wave 1 | U3 task and Mechanisms row |
 | C5 | Plan round 2: plugin doctor must drive the handler code, stale line must survive failed or empty fallback, probe must skip pre-parse telemetry writes. Mandatory in U3 and U4 briefs | plan review 2 | Phase 3 and 4 tasks and rows |
+| C6 | U2 worker round 1 red captures were taken as deletion failures, not before the code change. Disclosed nonconformance, accepted on the strength of two reviewer deletion rounds. Round 2 captures were red-first | U2 worker report | Review log U2 rows |
+| C7 | README and docs/commands.md STE 2.69 per 100 words (orchestrator lint), same cause as foundation C11: required literal command text. Out of scope | U2 worker report | None needed |
 | C4 | Plan round 1: runtime file location, plugin temporary guard, inert doctor probe, plugin doctor execution, stale path, built-CLI test | plan review 1 | Phase 1, 3, 4 tasks and rows |
 | C3 | Copilot scans report telemetry agent `claude` (foundation C7) | wave 1 | Not in scope |
 

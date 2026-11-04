@@ -116,7 +116,7 @@ export const detectInstalledAgents = (opts: { home: string; cwd: string }): Agen
 		if (
 			detectionScopes(agent).some((scope) =>
 				REGISTRY[agent]
-					.paths({ home: opts.home, cwd: opts.cwd, scope })
+					.paths({ home: opts.home, cwd: opts.cwd, scope, absolute: scope === "global" })
 					.some((target) => fs.existsSync(target)),
 			)
 		) {
@@ -144,11 +144,14 @@ const detectionScopes = (agent: AgentName): Array<"global" | "project"> =>
 export const scopeHasManagedMarker = (
 	agent: AgentName,
 	opts: { home: string; cwd: string; scope: "global" | "project" },
-): boolean => REGISTRY[agent].paths(opts).some(hasAislopHook);
+): boolean =>
+	REGISTRY[agent].paths({ ...opts, absolute: opts.scope === "global" }).some(hasAislopHook);
 
 export const detectAislopHooks = (opts: { home: string; cwd: string }): AgentName[] =>
 	ALL_AGENTS.filter((agent) =>
 		detectionScopes(agent).some((scope) =>
-			REGISTRY[agent].paths({ home: opts.home, cwd: opts.cwd, scope }).some(hasAislopHook),
+			REGISTRY[agent]
+				.paths({ home: opts.home, cwd: opts.cwd, scope, absolute: scope === "global" })
+				.some(hasAislopHook),
 		),
 	);

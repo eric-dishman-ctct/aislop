@@ -7,9 +7,11 @@ import { registerHookCommand } from "../../src/cli/hook-command.js";
 import {
 	AGENT_LABELS,
 	defaultInstallTargets,
+	hookInstall,
 	hookUninstall,
 	parseAgentFlag,
 	resolveAgents,
+	resolveHookInstallOpts,
 } from "../../src/commands/hook.js";
 import { installClaude, resolveClaudePaths } from "../../src/hooks/install/claude.js";
 
@@ -63,8 +65,12 @@ describe("hook uninstall scope markers", () => {
 			const output = await captureUninstall();
 			expect(fs.readFileSync(project.aislopMd, "utf8")).toBe(unmanagedRules);
 			expect(fs.readFileSync(project.settings, "utf8")).toBe(foreignSettings);
-			expect(fs.existsSync(resolveClaudePaths({ home, cwd, scope: "global", qualityGate: false }).settings)).toBe(false);
-			expect((output.match(/Scope/g) ?? [])).toHaveLength(1);
+			expect(
+				fs.existsSync(
+					resolveClaudePaths({ home, cwd, scope: "global", qualityGate: false }).settings,
+				),
+			).toBe(false);
+			expect(output.match(/Scope/g) ?? []).toHaveLength(1);
 		} finally {
 			process.chdir(oldCwd);
 			process.env.HOME = oldHome;
@@ -82,9 +88,17 @@ describe("hook uninstall scope markers", () => {
 		process.chdir(cwd);
 		try {
 			const output = await captureUninstall();
-			expect((output.match(/Scope/g) ?? [])).toHaveLength(2);
-			expect(fs.existsSync(resolveClaudePaths({ home, cwd, scope: "global", qualityGate: false }).settings)).toBe(false);
-			expect(fs.existsSync(resolveClaudePaths({ home, cwd, scope: "project", qualityGate: false }).settings)).toBe(false);
+			expect(output.match(/Scope/g) ?? []).toHaveLength(2);
+			expect(
+				fs.existsSync(
+					resolveClaudePaths({ home, cwd, scope: "global", qualityGate: false }).settings,
+				),
+			).toBe(false);
+			expect(
+				fs.existsSync(
+					resolveClaudePaths({ home, cwd, scope: "project", qualityGate: false }).settings,
+				),
+			).toBe(false);
 		} finally {
 			process.chdir(oldCwd);
 			process.env.HOME = oldHome;
@@ -102,9 +116,17 @@ describe("hook uninstall scope markers", () => {
 		process.chdir(cwd);
 		try {
 			const output = await captureUninstall(uninstallFlags(true, "project"));
-			expect((output.match(/Scope/g) ?? [])).toHaveLength(1);
-			expect(fs.existsSync(resolveClaudePaths({ home, cwd, scope: "project", qualityGate: false }).settings)).toBe(false);
-			expect(fs.existsSync(resolveClaudePaths({ home, cwd, scope: "global", qualityGate: false }).settings)).toBe(true);
+			expect(output.match(/Scope/g) ?? []).toHaveLength(1);
+			expect(
+				fs.existsSync(
+					resolveClaudePaths({ home, cwd, scope: "project", qualityGate: false }).settings,
+				),
+			).toBe(false);
+			expect(
+				fs.existsSync(
+					resolveClaudePaths({ home, cwd, scope: "global", qualityGate: false }).settings,
+				),
+			).toBe(true);
 		} finally {
 			process.chdir(oldCwd);
 			process.env.HOME = oldHome;
@@ -215,6 +237,69 @@ describe("resolveAgents", () => {
 
 	it("positional args beat --agent", () => {
 		expect(resolveAgents({}, ["claude"], "gemini", [])).toEqual(["claude"]);
+	});
+});
+
+describe("hook install command form", () => {
+	it("uses absolute commands globally and portable commands in projects unless forced", () => {
+		const flags = { agents: ["claude" as const], dryRun: false, yes: true, qualityGate: false };
+		expect(resolveHookInstallOpts("claude", { ...flags, scope: "global" }).absolute).toBe(true);
+		expect(resolveHookInstallOpts("claude", { ...flags, scope: "project" }).absolute).toBe(false);
+		expect(
+			resolveHookInstallOpts("claude", { ...flags, scope: "project", absolute: true }).absolute,
+		).toBe(true);
+	});
+
+	it("names a portable command rewrite after a global reinstall", async () => {
+		const home = tempDir();
+		const cwd = tempDir();
+		installClaude({ home, cwd, scope: "global", absolute: false });
+		const stdout = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+		vi.spyOn(os, "homedir").mockReturnValue(home);
+		vi.spyOn(process, "cwd").mockReturnValue(cwd);
+		await hookInstall({
+			agents: ["claude"],
+			scope: "global",
+			dryRun: false,
+			yes: true,
+			qualityGate: false,
+		});
+		const output = stdout.mock.calls.map(([text]) => String(text)).join("");
+		expect(output).toContain("Rewrote portable command");
+	});
+
+	it("does not name a portable command rewrite on a fresh install", async () => {
+		const home = tempDir();
+		const cwd = tempDir();
+		const stdout = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+		vi.spyOn(os, "homedir").mockReturnValue(home);
+		vi.spyOn(process, "cwd").mockReturnValue(cwd);
+		await hookInstall({
+			agents: ["claude"],
+			scope: "global",
+			dryRun: false,
+			yes: true,
+			qualityGate: false,
+		});
+		const output = stdout.mock.calls.map(([text]) => String(text)).join("");
+		expect(output).not.toContain("Rewrote portable command");
+	});
+
+	it("prints the do-not-commit reminder for an absolute project install", async () => {
+		const home = tempDir();
+		const cwd = tempDir();
+		const stderr = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+		vi.spyOn(os, "homedir").mockReturnValue(home);
+		vi.spyOn(process, "cwd").mockReturnValue(cwd);
+		await hookInstall({
+			agents: ["codex"],
+			scope: "project",
+			dryRun: false,
+			yes: true,
+			qualityGate: false,
+			absolute: true,
+		});
+		expect(stderr).toHaveBeenCalledWith(expect.stringContaining("do not commit"));
 	});
 });
 

@@ -104,6 +104,7 @@ type InstallOpts = AgentFlagOpts & {
 	dryRun?: boolean;
 	yes?: boolean;
 	qualityGate?: boolean;
+	absolute?: boolean;
 	forceTemporary?: boolean;
 };
 
@@ -129,6 +130,7 @@ const addInstallOptions = (command: Command): Command =>
 			)
 			.option("-g, --global", "install to the user-scope config (default)")
 			.option("--project", "install to the project-scope config")
+			.option("--absolute", "write absolute Node and CLI paths for a project install")
 			.option("--dry-run", "print the planned diff without writing")
 			.option("--yes", "skip the confirmation prompt (reserved)")
 			.option("--force-temporary", "allow an install from a temporary package cache")
@@ -160,6 +162,7 @@ const runInstallAction = async (positional: string[], opts: InstallOpts): Promis
 				dryRun: Boolean(opts.dryRun),
 				yes: Boolean(opts.yes),
 				qualityGate: Boolean(opts.qualityGate),
+				absolute: Boolean(opts.absolute),
 				forceTemporary: Boolean(opts.forceTemporary),
 				explicitScope: Boolean(opts.global || opts.project),
 			});

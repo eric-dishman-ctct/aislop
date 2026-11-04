@@ -2,6 +2,8 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { resolveHookRuntime } from "../../src/hooks/runtime/resolve.js";
+import { sentinelHash } from "../../src/hooks/io/sentinel.js";
 import {
 	installClaude,
 	resolveClaudePaths,
@@ -59,6 +61,47 @@ describe("installClaude global", () => {
 			"aislop hook claude --on-file-changed",
 		);
 		expect(settings.hooks.FileChanged[0].hooks[0].__aislop.managed).toBe(true);
+	});
+
+	it("writes the portable literal command when absolute is false", () => {
+		installClaude({ ...globalOpts(), absolute: false });
+		const settings = JSON.parse(fs.readFileSync(resolveClaudePaths(globalOpts()).settings, "utf8"));
+		expect(settings.hooks.PostToolUse[0].hooks[0].command).toBe("aislop hook claude");
+	});
+
+	it("writes a quoted resolved command when absolute is true", () => {
+		installClaude({ ...globalOpts(), absolute: true, qualityGate: true });
+		const settings = JSON.parse(fs.readFileSync(resolveClaudePaths(globalOpts()).settings, "utf8"));
+		const runtime = resolveHookRuntime();
+		expect(settings.hooks.PostToolUse[0].hooks[0].command).toContain(runtime.nodePath);
+		expect(settings.hooks.PostToolUse[0].hooks[0].command).toContain(runtime.cliPath);
+		expect(settings.hooks.Stop[0].hooks[0].command).toContain("--stop");
+		expect(settings.hooks.FileChanged[0].hooks[0].command).toContain("--on-file-changed");
+	});
+
+	it("changes each written hash when the command changes form", () => {
+		installClaude({ ...globalOpts(), absolute: false, qualityGate: true });
+		const paths = resolveClaudePaths(globalOpts());
+		const portable = JSON.parse(fs.readFileSync(paths.settings, "utf8"));
+		const result = installClaude({ ...globalOpts(), absolute: true, qualityGate: true });
+		expect(result.rewrittenFromPortable).toBe(true);
+		const absolute = JSON.parse(fs.readFileSync(paths.settings, "utf8"));
+		for (const event of ["PostToolUse", "Stop", "FileChanged"] as const) {
+			const before = portable.hooks[event][0].hooks[0];
+			const after = absolute.hooks[event][0].hooks[0];
+			expect(after.__aislop.hash).not.toBe(before.__aislop.hash);
+			const hashBody =
+				event === "Stop"
+					? { command: after.command }
+					: { command: after.command, matcher: absolute.hooks[event][0].matcher };
+			expect(after.__aislop.hash).toBe(sentinelHash(JSON.stringify(hashBody)));
+		}
+	});
+
+	it("uses the PowerShell builder for an absolute Windows command", () => {
+		installClaude({ ...globalOpts(), absolute: true, platform: "win32" });
+		const settings = JSON.parse(fs.readFileSync(resolveClaudePaths(globalOpts()).settings, "utf8"));
+		expect(settings.hooks.PostToolUse[0].hooks[0].command).toMatch(/^& /);
 	});
 
 	it("is idempotent across repeated runs", () => {
