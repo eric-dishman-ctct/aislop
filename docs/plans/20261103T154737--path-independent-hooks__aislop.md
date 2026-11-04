@@ -12,7 +12,7 @@ tags: ["aislop", "hooks", "path"]
 
 ## Status
 
-In progress. U1 passed review, commit pending. Accepted revision 2 after two plan review rounds. Round 2 findings are folded in as C5. Decision [KD-007](../decisions/20261103T140509--hook-command-embeds-node-and-cli-paths__aislop.md)
+In progress. U1 committed as b47169d. Accepted revision 2 after two plan review rounds. Round 2 findings are folded in as C5. Decision [KD-007](../decisions/20261103T140509--hook-command-embeds-node-and-cli-paths__aislop.md)
 accepted. No unit started. Baseline for all reviews: the commit that lands this plan.
 
 ## Context
@@ -75,7 +75,7 @@ written into every hook, or a durable hook pointing into an npx cache.
 - [x] Tests red-first for every Mechanisms row marked U1, `Test` column added ([u1-gates](../evidence/20261103-u1-gates.md))
 - [x] Gates captured: [u1-gates](../evidence/20261103-u1-gates.md)
 - [x] Independent review PASS (round 2, zero findings) ([u1-gates](../evidence/20261103-u1-gates.md))
-- [ ] Commit
+- [x] Commit b47169d
 
 ### Phase 2: shell-string installers (U2)
 
@@ -94,7 +94,7 @@ never runs, or a committed project file that breaks teammates.
 - [ ] Tests red-first for every Mechanisms row marked U2, `Test` column added
 - [ ] Gates captured
 - [ ] Independent review PASS
-- [ ] Commit
+- [x] Commit b47169d
 
 ### Phase 3: plugin installers (U3)
 
@@ -111,7 +111,7 @@ spawns the wrong binary or falls through to `PATH` silently.
 - [ ] Tests red-first for every Mechanisms row marked U3, `Test` column added
 - [ ] Gates captured
 - [ ] Independent review PASS
-- [ ] Commit
+- [x] Commit b47169d
 
 ### Phase 4: hook doctor (U4)
 
@@ -129,7 +129,7 @@ healthy for a hook that does not run.
 - [ ] Tests red-first for every Mechanisms row marked U4, `Test` column added
 - [ ] Gates captured
 - [ ] Independent review PASS
-- [ ] Commit
+- [x] Commit b47169d
 
 ### Phase 5: integration
 
