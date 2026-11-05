@@ -2,9 +2,9 @@
 type: plan
 title: "PATH-independent hook commands"
 summary: "Make every aislop hook run without PATH lookup of aislop or node, per KD-007: install-time resolver, per-host command builders, run-time resolution in plugins, a temporary-install guard, and hook doctor"
-status: in-progress
+status: complete
 created: 2026-11-03T15:47:37
-updated: 2026-11-05T08:03:42
+updated: 2026-11-05T08:29:03
 tags: ["aislop", "hooks", "path"]
 ---
 
@@ -12,7 +12,7 @@ tags: ["aislop", "hooks", "path"]
 
 ## Status
 
-In progress. U1 committed as b47169d. U2 committed as 136ed93. U3 committed as 0d5c198. U4 committed as dc345c6. Phase 5 integration done, tagged wave-hooks-v2 on 7a94e09. U5 committed as d0d26d8, C14 closed. Tag wave-hooks-v2 on 5e350b8. U6 committed as 74bd72e. U7 committed as 80d11f4. Phase 9 (U8) added for C11 and C12, in progress. Accepted revision 2 after two plan review rounds. Round 2 findings are folded in as C5. Decision [KD-007](../decisions/20261103T140509--hook-command-embeds-node-and-cli-paths__aislop.md)
+In progress. U1 committed as b47169d. U2 committed as 136ed93. U3 committed as 0d5c198. U4 committed as dc345c6. Phase 5 integration done, tagged wave-hooks-v2 on 7a94e09. U5 committed as d0d26d8, C14 closed. Tag wave-hooks-v2 on 5e350b8. U6 committed as 74bd72e. U7 committed as 80d11f4. U8 reviewed, PASS in round 2, C11 and C12 closed. All carried findings closed. U8 committed as 164e1b6. Plan complete, tag wave-hooks-v2 on the closing docs commit. Accepted revision 2 after two plan review rounds. Round 2 findings are folded in as C5. Decision [KD-007](../decisions/20261103T140509--hook-command-embeds-node-and-cli-paths__aislop.md)
 accepted. No unit started. Baseline for all reviews: the commit that lands this plan.
 
 ## Context
@@ -202,11 +202,11 @@ reports a root install as absent.
 Risk: LOW. One guard moves earlier in `src/cli.ts`, one test assertion is added. No hook
 file content changes.
 
-- [ ] C12: `fireInstalledOnce` in `src/cli.ts` runs before command parsing and writes `~/.aislop/install_id` even when `hook install` then refuses a temporary-cache execution. Skip the pre-parse identity write when the process is a `hook install` from a temporary execution (`isTemporaryExecution(process.argv[1])` and no `--force-temporary`), so the refused run writes nothing under HOME. A later, stable run creates the identity as before. The probe skip stays
-- [ ] C11: `tests/hooks/install-copilot.test.ts` asserts `after.exec` equals the Node path and `after.args[0]` equals the CLI path from the same runtime the installer used, so swapping `exec` and `args[0]` in `copilotExec` fails the installer test, not only `runtime.test.ts`
-- [ ] Red-first for both, deletion checks pasted
-- [ ] Built-CLI check for C12: `pnpm pack`, `npx --yes --package=<tgz> aislop hook install --claude --global --yes` in a clean temp HOME exits 1 and leaves HOME with no `.aislop` directory and no `.claude` directory
-- [ ] Commit, staged by name
+- [x] C12: `fireInstalledOnce` in `src/cli.ts` runs before command parsing and writes `~/.aislop/install_id` even when `hook install` then refuses a temporary-cache execution. Skip the pre-parse identity write when the process is a `hook install` from a temporary execution (`isTemporaryExecution(process.argv[1])` and no `--force-temporary`), so the refused run writes nothing under HOME. A later, stable run creates the identity as before. The probe skip stays ([p5-integration](../evidence/20261104-p5-integration.md))
+- [x] C11: `tests/hooks/install-copilot.test.ts` asserts `after.exec` equals the Node path and `after.args[0]` equals the CLI path from the same runtime the installer used, so swapping `exec` and `args[0]` in `copilotExec` fails the installer test, not only `runtime.test.ts` ([p5-integration](../evidence/20261104-p5-integration.md))
+- [x] Red-first for both, deletion checks pasted ([p5-integration](../evidence/20261104-p5-integration.md))
+- [x] Built-CLI check for C12: `pnpm pack`, `npx --yes --package=<tgz> aislop hook install --claude --global --yes` in a clean temp HOME exits 1 and leaves HOME with no `.aislop` directory and no `.claude` directory ([p5-integration](../evidence/20261104-p5-integration.md))
+- [x] Commit, staged by name, 164e1b6
 
 ## Mechanisms
 
@@ -252,12 +252,12 @@ file content changes.
 | U6 doctor baseline row | Missing baseline with an installed Stop hook is exit 1 | `baseline: missing, quality gate inactive` | `tests/hooks/doctor.test.ts`: uses the project-root baseline when the doctor runs from a nested directory |
 | U7 install root | Project install from a subdirectory writes under the project root | `resolveHookRoot(process.cwd())` in `resolveHookInstallOpts` | `tests/hooks/hook-root.test.ts`: install root |
 | U7 uninstall root | Project uninstall from a subdirectory removes root settings | `resolveHookRoot(process.cwd())` in `hookUninstall` | `tests/hooks/hook-root.test.ts`: uninstall root |
-| U7 doctor root | Doctor resolves the nested cwd once and reads root hook state | one `root` value in `runHookDoctor` | `tests/hooks/hook-command.test.ts`: resolves the nested cwd once in the doctor entry; `tests/hooks/hook-root.test.ts`: doctor root |
+| U7 doctor root | Doctor resolves the nested cwd once and reads root hook state | one `root` value in `runHookDoctor` | `tests/hooks/hook-command.test.ts`: resolves the nested cwd once in the doctor entry; and hook-root.test.ts: doctor root |
 | U7 doctor probe cwd | Doctor sends the project root in its probe payload | `root` passed to `runHookDoctorEntry` | `tests/hooks/hook-root.test.ts`: doctor probe sends the project root as cwd |
 | U7 status root | `hook status` reads the project scope from the project root | `resolveHookRoot` in `status-render.ts` | `tests/hooks/hook-root.test.ts`: status root |
 | U7 global unchanged | Global scope paths never use the project root | `home` for `scope === "global"` | `tests/hooks/hook-root.test.ts`: global unchanged |
-| U8 identity skip | A refused temporary `hook install` writes no identity file | `isTemporaryExecution(process.argv[1])` before `ensureInstallId` | |
-| U8 Copilot seam | Installer test pins `exec` to the Node path and `args[0]` to the CLI path | `after.exec === nodePath`, `after.args[0] === cliPath` | |
+| U8 identity skip | A refused temporary `hook install` writes no identity file | `HOOK_COMMAND_NAMES`, `isTemporaryExecution(process.argv[1])` before `ensureInstallId`, and `allowHookRuntimeInstall` before `withCommandLifecycle` | `tests/hooks/runtime-built.test.ts`: U8 built CLI identity skip |
+| U8 Copilot seam | Installer test pins `exec` to the Node path and `args[0]` to the CLI path | `after.exec === nodePath`, `after.args[0] === cliPath` | `tests/hooks/install-copilot.test.ts`: absolute form runtime paths |
 
 ## Gates
 
@@ -277,7 +277,7 @@ file content changes.
 | G13 | Built-CLI fresh project blocks on the first regression after install, no manual baseline | yes | yes, Stop decision block, score 100 to 89, reviewer probe round 1, [p5-integration](../evidence/20261104-p5-integration.md) | [x] |
 | G14 | U7 rows with a reviewer-confirmed test | 4 of 4 | 4 of 4, plus uninstall, probe cwd, and single-resolution pins in round 2, [p5-integration](../evidence/20261104-p5-integration.md) | [x] |
 | G15 | Built CLI: root install, nested doctor exit 0 with runtime ok and baseline ok | yes | yes, both review rounds, [p5-integration](../evidence/20261104-p5-integration.md) | [x] |
-| G16 | U8 rows with a reviewer-confirmed test, and the npx refusal leaves HOME empty | 2 of 2, yes | | [ ] |
+| G16 | U8 rows with a reviewer-confirmed test, and the npx refusal leaves HOME empty | 2 of 2, yes | 2 of 2, both C12 guards pinned alone, alias and force path pinned in round 2, packed `hook` and `hooks install` leave HOME clean, [p5-integration](../evidence/20261104-p5-integration.md) | [x] |
 | G9 | Builders labelled unverified on Windows in docs | present | present, README.md:294 and docs/commands.md:202, [p5-integration](../evidence/20261104-p5-integration.md) | [x] |
 
 ## Review log
@@ -302,6 +302,8 @@ file content changes.
 | U6 | 2 | BLOCK: doctor also reads project hook settings and the runtime file at the literal cwd (pre-existing from dc345c6). Reassessment: split, U6 accepted for its own rows, doctor root resolution becomes U7 |
 | U7 | 1 | BLOCK: root resolved twice on the doctor path, nested uninstall and probe payload cwd unpinned, doctor.ts at the size limit |
 | U7 | 2 | PASS, zero findings, three mutations caught, report helpers moved to doctor-report.ts |
+| U8 | 1 | BLOCK: pre-parse identity guard missed the `hooks` alias (live leak), force exemption undiscriminated |
+| U8 | 2 | PASS, zero findings, three mutations caught, offline-safe debug assertion |
 | plan | 2 | BLOCK, three findings folded into the text and C5. Round cap reached, plan accepted by the user with C5 mandatory | 3 | 0 | 2026-11-03 |
 
 ## Carried findings
@@ -316,8 +318,8 @@ file content changes.
 | C8 | Live OpenCode checks in U3 ran on OpenCode 2.2.5, not the 2.2.4 cited by WU-2. Behaviour unchanged | U3 review round 1 | None needed |
 | C9 | U4 worker skipped per-row red-first in its first two passes (one combined red capture). Disclosed nonconformance, accepted on deletion discrimination across four review rounds. Rounds 2, 3 and the HOME-tree pin were red-first | U4 worker reports | Review log U4 rows |
 | C10 | U4 needed three blocked rounds. Reassessment (user approved) found the final block was a self-scan suppression, not a doctor defect, and split a refactor leg U4b | Review log | Closed by U4b |
-| C11 | Cross-seam: swapping `exec` and `args[0]` in `copilotExec` fails only `runtime.test.ts`. `install-copilot.test.ts:65` checks `exec` is a string, not the Node path | Phase 5 item 5 | Open, next wave |
-| C12 | The temporary-install refusal still writes the telemetry identity `.aislop/install_id` before the guard runs | Phase 5 item 3 | Open, next wave |
+| C11 | Cross-seam: swapping `exec` and `args[0]` in `copilotExec` fails only `runtime.test.ts`. `install-copilot.test.ts:65` checks `exec` is a string, not the Node path | Phase 5 item 5 | Closed by U8, G16 |
+| C12 | The temporary-install refusal still writes the telemetry identity `.aislop/install_id` before the guard runs | Phase 5 item 3 | Closed by U8, G16 |
 | C13 | `hook install --quality-gate` does not capture a baseline. Without `.aislop/baseline.json` the gate never blocks. Two live runs produced no block for this reason | Phase 5 item 1 | Closed by U6, G13 |
 | C14 | Inside VS Code the agent cannot run bare `aislop scan` as the block message suggests, because Node is not on the VS Code PATH. The agent fixed the code from the findings alone | Phase 5 item 1 | Closed by U5, G11 |
 | C15 | `hook doctor --project` reads hook settings (src/hooks/doctor.ts:379-408) and the project runtime file (src/hooks/doctor.ts:109) at the literal cwd, so from a subdirectory it reports `baseline: not required` and `runtime: missing` for a root install. Pre-existing from dc345c6, exposed by U6 | U6 review round 2 | Closed by U7, G15 |

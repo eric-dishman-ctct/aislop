@@ -127,3 +127,18 @@ only under the temp HOME. A project with no `.git` and no `.aislop` markers beha
 U7 (install at the cwd), compared against a build of f881834. Round 1 blocked on a double
 root resolution and two unpinned seams. Round 2 caught all three mutations
 (`hook-command.test.ts:68`, `hook-root.test.ts:131`, `hook-root.test.ts:176`). G15 yes.
+
+## Phase 9, U8 close C11 and C12 (G16)
+
+C12 has two guards: the pre-parse identity skip in `src/cli.ts` and the refusal check
+before the telemetry lifecycle in `src/cli/hook-command.ts`. The round 1 reviewer deleted
+each alone with the other intact, and the built-CLI test failed both times at
+`tests/hooks/runtime-built.test.ts:56`. Round 1 found live that a packed `hooks install`
+(the alias) still wrote `install_id`, and that the `--force-temporary` exemption had no
+discriminating test. Round 2 introduced `HOOK_COMMAND_NAMES` shared by the registration and
+the guard, and a telemetry debug assertion (`AISLOP_TELEMETRY_DEBUG=1`,
+`AISLOP_TELEMETRY_DRY_RUN=1`, no network). Round 2 reviewer: guard-alias mutation caught at
+`runtime-built.test.ts:63`, force-exemption mutation at `:85`, names-constant mutation at
+`cli-ergonomics.test.ts:379`. Packed `hooks install` and `hook install` in a clean temp HOME
+both exited 1 and left no `.aislop` and no `.claude`. C11: swapping `exec` and `args[0]` in
+`copilotExec` fails `install-copilot.test.ts:67`, expected paths from `resolveHookRuntime()`.
