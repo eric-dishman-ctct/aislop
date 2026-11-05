@@ -82,11 +82,15 @@ interface HookOperationRenderItem {
 	rows: DisplayRow[];
 }
 
-export const resolveHookInstallOpts = (agent: AgentName, flags: InstallFlags): HookInstallOpts => {
+export const resolveHookInstallOpts = (
+	agent: AgentName,
+	flags: InstallFlags,
+	cwd = resolveHookRoot(process.cwd()),
+): HookInstallOpts => {
 	const scope: "global" | "project" = AGENTS_PROJECT_ONLY.includes(agent) ? "project" : flags.scope;
 	return {
 		home: os.homedir(),
-		cwd: process.cwd(),
+		cwd,
 		scope,
 		absolute: Boolean(flags.absolute) || scope === "global",
 		dryRun: flags.dryRun,
@@ -105,17 +109,18 @@ export const hookInstall = async (
 		return;
 	}
 	if (!allowHookRuntimeInstall(flags.dryRun, Boolean(flags.forceTemporary))) return;
+	const root = resolveHookRoot(process.cwd());
 	const items: HookInstallRenderItem[] = [];
 	const runtimeScopes = new Set<"global" | "project">();
 	for (const agent of flags.agents) {
-		const opts = resolveHookInstallOpts(agent, flags);
+		const opts = resolveHookInstallOpts(agent, flags, root);
 		const result = REGISTRY[agent].install(opts);
 		items.push({ agent, scope: opts.scope, result, absolute: Boolean(opts.absolute) });
 		runtimeScopes.add(opts.scope);
 	}
-	if (!flags.dryRun) writeInstalledHookRuntimes(runtimeScopes);
+	if (!flags.dryRun) writeInstalledHookRuntimes(runtimeScopes, { cwd: root });
 	const baseline = flags.qualityGate
-		? await ensureHookBaseline(resolveHookRoot(process.cwd()), { dryRun: flags.dryRun })
+		? await ensureHookBaseline(root, { dryRun: flags.dryRun })
 		: undefined;
 	if (flags.scope === "project") {
 		process.stdout.write("Reminder: .aislop/hook-runtime.json holds machine paths.\n");
@@ -127,14 +132,15 @@ export const hookInstall = async (
 };
 
 export const hookUninstall = async (flags: InstallFlags): Promise<void> => {
+	const root = resolveHookRoot(process.cwd());
 	const items: HookUninstallRenderItem[] = [];
 	for (const agent of flags.agents) {
 		const scopes =
 			!flags.explicitScope && AGENTS_SUPPORTING_BOTH_SCOPES.includes(agent)
 				? (["global", "project"] as const)
-				: [resolveHookInstallOpts(agent, flags).scope];
+				: [resolveHookInstallOpts(agent, flags, root).scope];
 		for (const scope of scopes) {
-			const opts = { ...resolveHookInstallOpts(agent, flags), scope };
+			const opts = { ...resolveHookInstallOpts(agent, flags, root), scope };
 			if (
 				!flags.explicitScope &&
 				!scopeHasManagedMarker(agent, { home: opts.home, cwd: opts.cwd, scope })

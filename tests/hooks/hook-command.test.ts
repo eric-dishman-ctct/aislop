@@ -4,6 +4,7 @@ import path from "node:path";
 import { Command } from "commander";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { registerHookCommand } from "../../src/cli/hook-command.js";
+import * as projectRoot from "../../src/hooks/io/project-root.js";
 import {
 	AGENT_LABELS,
 	defaultInstallTargets,
@@ -45,6 +46,29 @@ const captureUninstall = async (flags = uninstallFlags()): Promise<string> => {
 const installManagedClaude = (home: string, cwd: string, scope: "global" | "project"): void => {
 	installClaude({ home, cwd, scope, qualityGate: false });
 };
+
+describe("hook doctor root resolution", () => {
+	it("resolves the nested cwd once in the doctor entry", async () => {
+		const root = tempDir();
+		const nested = path.join(root, "src", "deep");
+		fs.mkdirSync(path.join(root, ".git"), { recursive: true });
+		fs.mkdirSync(nested, { recursive: true });
+		const resolve = vi.spyOn(projectRoot, "resolveHookRoot");
+		const originalCwd = process.cwd();
+		process.chdir(nested);
+		try {
+			const program = new Command();
+			program.exitOverride();
+			registerHookCommand(program);
+			await program.parseAsync(["node", "aislop", "hook", "doctor", "--project"]);
+		} finally {
+			process.chdir(originalCwd);
+			process.exitCode = undefined;
+		}
+		expect(resolve).toHaveBeenCalledTimes(1);
+		expect(resolve).toHaveBeenCalledWith(nested);
+	});
+});
 
 describe("hook uninstall scope markers", () => {
 	it("keeps unmanaged project Claude files when no scope flag is set", async () => {

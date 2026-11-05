@@ -10,6 +10,7 @@ import {
 	type AgentName,
 } from "./install/registry.js";
 import { hookDoctorRuntime } from "./doctor.js";
+import { resolveHookRoot } from "./io/project-root.js";
 import { renderDisplaySection, renderDisplayStatusItems } from "../ui/display.js";
 import { renderHeader } from "../ui/header.js";
 import { style, theme } from "../ui/theme.js";
@@ -18,21 +19,20 @@ import { APP_VERSION } from "../version.js";
 export const hookMarker = (active: boolean): string =>
 	active ? style(theme, "success", "✓") : style(theme, "muted", "·");
 
-export const hookStatus = async (): Promise<void> => {
-	const home = os.homedir();
-	const cwd = process.cwd();
-	const installed = new Set(detectInstalledAgents({ home, cwd }));
+export const hookStatus = async (cwd = process.cwd(), home = os.homedir()): Promise<void> => {
+	const root = resolveHookRoot(cwd);
+	const installed = new Set(detectInstalledAgents({ home, cwd: root }));
 	const items = ALL_AGENTS.map((agent) => {
 		const scopes = AGENTS_SUPPORTING_BOTH_SCOPES.includes(agent)
 			? (["global", "project"] as const)
 			: [defaultScopeFor(agent)];
 		const targets = scopes.flatMap((scope) =>
-			REGISTRY[agent].paths({ home, cwd, scope, absolute: scope === "global" }),
+			REGISTRY[agent].paths({ home, cwd: root, scope, absolute: scope === "global" }),
 		);
 		const runtimeStatus = scopes.filter(
 			(scope) =>
-				scopeHasManagedMarker(agent, { home, cwd, scope }) &&
-				hookDoctorRuntime(scope, home, cwd).status === "stale",
+				scopeHasManagedMarker(agent, { home, cwd: root, scope }) &&
+				hookDoctorRuntime(scope, home, root).status === "stale",
 		);
 		return {
 			agent,

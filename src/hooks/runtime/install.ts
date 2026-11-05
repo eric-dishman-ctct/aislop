@@ -15,6 +15,9 @@ export const allowHookRuntimeInstall = (dryRun: boolean, forceTemporary: boolean
 	return true;
 };
 
-export const writeInstalledHookRuntimes = (scopes: Set<"global" | "project">): void => {
-	for (const scope of scopes) writeHookRuntime(scope);
+export const writeInstalledHookRuntimes = (
+	scopes: Set<"global" | "project">,
+	locations: { home?: string; cwd?: string } = {},
+): void => {
+	for (const scope of scopes) writeHookRuntime(scope, locations);
 };

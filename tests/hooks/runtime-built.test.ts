@@ -89,6 +89,54 @@ describe("U1 built-CLI resolution", () => {
 		expect(JSON.parse(stop).decision).toBe("block");
 	});
 
+	it("U7 built CLI install root: writes project hook state at the git root", () => {
+		const root = tempDir();
+		const nested = path.join(root, "src", "deep");
+		const home = tempDir();
+		const cli = path.resolve("dist/cli.js");
+		fs.mkdirSync(nested, { recursive: true });
+		spawnSync("git", ["init", "-q"], { cwd: root, encoding: "utf8" });
+		fs.writeFileSync(path.join(root, "source.ts"), "export const value = 1;\n");
+		const result = spawnSync(
+			process.execPath,
+			[cli, "hook", "install", "--claude", "--project", "--quality-gate", "--absolute", "--yes"],
+			{ cwd: nested, env: { ...process.env, HOME: home, AISLOP_TELEMETRY: "0" }, encoding: "utf8" },
+		);
+		expect(result.status).toBe(0);
+		for (const file of [
+			".claude/settings.json",
+			".aislop/hook-runtime.json",
+			".aislop/baseline.json",
+		])
+			expect(fs.existsSync(path.join(root, file))).toBe(true);
+		expect(fs.existsSync(path.join(nested, ".claude/settings.json"))).toBe(false);
+		expect(fs.existsSync(path.join(nested, ".aislop/hook-runtime.json"))).toBe(false);
+		expect(fs.existsSync(path.join(nested, ".aislop/baseline.json"))).toBe(false);
+	});
+
+	it("U7 built CLI doctor root: reports a root install from a nested directory", () => {
+		const root = tempDir();
+		const nested = path.join(root, "src", "deep");
+		const home = tempDir();
+		const cli = path.resolve("dist/cli.js");
+		fs.mkdirSync(nested, { recursive: true });
+		spawnSync("git", ["init", "-q"], { cwd: root, encoding: "utf8" });
+		fs.writeFileSync(path.join(root, "source.ts"), "export const value = 1;\n");
+		execFileSync(
+			process.execPath,
+			[cli, "hook", "install", "--claude", "--project", "--quality-gate", "--absolute", "--yes"],
+			{ cwd: root, env: { ...process.env, HOME: home, AISLOP_TELEMETRY: "0" }, encoding: "utf8" },
+		);
+		const result = spawnSync(process.execPath, [cli, "hook", "doctor", "--project"], {
+			cwd: nested,
+			env: { ...process.env, HOME: home, AISLOP_TELEMETRY: "0" },
+			encoding: "utf8",
+		});
+		expect(result.status).toBe(0);
+		expect(result.stdout).toContain("runtime: ok");
+		expect(result.stdout).toContain("baseline: ok");
+	});
+
 	it("U5 built CLI: puts the quoted runtime command in regression feedback", () => {
 		const cwd = tempDir();
 		const cli = path.resolve("dist/cli.js");

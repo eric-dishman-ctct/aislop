@@ -396,8 +396,8 @@ describe("hook doctor", () => {
 		const cwd = path.join(root, "nested");
 		fs.mkdirSync(path.join(root, ".git"), { recursive: true });
 		fs.mkdirSync(cwd, { recursive: true });
-		installClaude({ home, cwd, scope: "project", absolute: true, qualityGate: true });
-		const settings = path.join(cwd, ".claude", "settings.json");
+		installClaude({ home, cwd: root, scope: "project", absolute: true, qualityGate: true });
+		const settings = path.join(root, ".claude", "settings.json");
 		const installed = JSON.parse(fs.readFileSync(settings, "utf8")) as {
 			hooks: Record<string, Array<{ hooks: Array<{ command: string }> }>>;
 		};
@@ -409,13 +409,19 @@ describe("hook doctor", () => {
 			path.join(root, ".aislop", "baseline.json"),
 			JSON.stringify({ schema: "aislop.baseline.v2", score: 88 }),
 		);
-		const result = spawnSync(process.execPath, [builtCli, "hook", "doctor", "--project", "--json"], {
-			cwd,
-			env: { ...process.env, HOME: home, AISLOP_TELEMETRY: "0" },
-			encoding: "utf8",
-		});
+		const result = spawnSync(
+			process.execPath,
+			[builtCli, "hook", "doctor", "--project", "--json"],
+			{
+				cwd,
+				env: { ...process.env, HOME: home, AISLOP_TELEMETRY: "0" },
+				encoding: "utf8",
+			},
+		);
 		expect(result.status).toBe(0);
-		expect(JSON.parse(result.stdout).baseline).toEqual([{ scope: "project", status: "ok", score: 88 }]);
+		expect(JSON.parse(result.stdout).baseline).toEqual([
+			{ scope: "project", status: "ok", score: 88 },
+		]);
 	});
 
 	it("exits one for a missing baseline and zero when it is present or not required", () => {

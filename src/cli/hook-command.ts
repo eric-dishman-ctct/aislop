@@ -14,6 +14,7 @@ import {
 import { loadConfig } from "../config/index.js";
 import { renderHookDoctor, runHookDoctor } from "../hooks/doctor.js";
 import { type AgentName, detectInstalledAgents } from "../hooks/install/registry.js";
+import { resolveHookRoot } from "../hooks/io/project-root.js";
 import { printHookRuntime } from "../hooks/runtime/status.js";
 import { withCommandLifecycle } from "../telemetry/index.js";
 import { log } from "../ui/logger.js";
@@ -56,7 +57,10 @@ const resolveScope = (flags: { global?: boolean; project?: boolean }): "global" 
 };
 
 const promptForUninstall = async (): Promise<AgentName[] | null> => {
-	const installed = detectInstalledAgents({ home: os.homedir(), cwd: process.cwd() });
+	const installed = detectInstalledAgents({
+		home: os.homedir(),
+		cwd: resolveHookRoot(process.cwd()),
+	});
 	if (installed.length === 0) {
 		log.warn("No aislop hooks installed. Nothing to uninstall.");
 		return [];
@@ -221,7 +225,9 @@ const registerRuntime = (hook: Command): void => {
 		.command("runtime")
 		.description("Show the resolved hook runtime paths")
 		.option("--json", "print JSON")
-		.action(() => printHookRuntime(process.argv.includes("--json")));
+		.action(() =>
+			printHookRuntime(process.argv.includes("--json"), resolveHookRoot(process.cwd())),
+		);
 };
 
 const registerDoctor = (hook: Command): void => {

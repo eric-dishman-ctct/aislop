@@ -10,15 +10,16 @@ import {
 import { AISLOP_SENTINEL_KEY } from "./io/json-patch.js";
 import { resolveHookRoot } from "./io/project-root.js";
 import { readBaseline } from "./quality-gate/baseline.js";
+import { hookDoctorRuntime } from "./doctor-report.js";
 import { resolveHookRuntime } from "./runtime/resolve.js";
 import { readHookRuntime } from "./runtime/runtime-file.js";
 
+export { hookDoctorRuntime, renderHookDoctor } from "./doctor-report.js";
 const PROBE_SCHEMA = "aislop.hook.probe.v1";
 const HOOK_DOCTOR_TIMEOUT_MS = 10_000;
-type Scope = "global" | "project";
+export type Scope = "global" | "project";
 type PluginBranch = "AISLOP_BIN" | "runtime-project" | "runtime-global" | "bare";
 export type ManagedEntry = { eventGroup: string; command?: string; exec?: string; args?: string[] };
-
 export interface HookDoctorEntry {
 	host: AgentName;
 	scope: Scope;
@@ -55,7 +56,6 @@ export interface HookDoctorReport {
 	runtime: HookDoctorRuntime[];
 	baseline: HookDoctorBaseline[];
 }
-
 type SpawnProcess = (
 	command: string,
 	args: string[],
@@ -100,32 +100,12 @@ const entriesInFile = (file: string): ManagedEntry[] => {
 		return [];
 	}
 };
-
-export const hookDoctorRuntime = (
-	scope: Scope,
-	home = os.homedir(),
-	cwd = process.cwd(),
-): HookDoctorRuntime => {
-	const result = readHookRuntime(scope === "global" ? home : cwd);
-	const current = resolveHookRuntime();
-	const status =
-		result.status === "ok" && result.runtime.version !== current.version ? "stale" : result.status;
-	return {
-		scope,
-		status,
-		pairMatchesCurrent:
-			result.status === "ok" &&
-			status === "ok" &&
-			result.runtime.nodePath === current.nodePath &&
-			result.runtime.cliPath === current.cliPath,
-	};
-};
-
 export const runHookDoctorEntry = async (
 	entry: ManagedEntry,
 	timeoutMs = HOOK_DOCTOR_TIMEOUT_MS,
 	spawnEntry: SpawnProcess = spawnProcess,
 	writeProbePayload = true,
+	probeCwd = process.cwd(),
 ): Promise<Omit<HookDoctorEntry, "host" | "scope" | "eventGroup" | "commandForm">> =>
 	new Promise((resolve) => {
 		let child: ReturnType<typeof spawn>;
@@ -195,10 +175,9 @@ export const runHookDoctorEntry = async (
 		child.on("close", finish);
 		if (writeProbePayload)
 			child.stdin?.end(
-				JSON.stringify({ tool_name: "edit", file_path: "doctor-probe.ts", cwd: process.cwd() }),
+				JSON.stringify({ tool_name: "edit", file_path: "doctor-probe.ts", cwd: probeCwd }),
 			);
 	});
-
 const pluginBranch = (
 	bin: string | undefined,
 	args: string[] | undefined,
@@ -222,7 +201,6 @@ const pluginBranch = (
 		return "runtime-global";
 	return "bare";
 };
-
 const runPlugin = async (
 	host: "pi" | "opencode",
 	file: string,
@@ -350,7 +328,6 @@ const runPlugin = async (
 		globals.__aislopPlugin = originalPlugin;
 	}
 };
-
 export const runHookDoctor = async (
 	options: {
 		global?: boolean;
@@ -368,13 +345,13 @@ export const runHookDoctor = async (
 				]
 			: ["global", "project"];
 	const home = options.home ?? os.homedir();
-	const cwd = options.cwd ?? process.cwd();
+	const root = resolveHookRoot(options.cwd ?? process.cwd());
 	const entries: HookDoctorEntry[] = [];
 	for (const host of ALL_AGENTS)
 		for (const scope of scopesFor(host, scopes)) {
 			const files = REGISTRY[host].paths({
 				home,
-				cwd,
+				cwd: root,
 				scope,
 				absolute: scope === "global",
 				qualityGate: false,
@@ -382,12 +359,18 @@ export const runHookDoctor = async (
 			if (host === "pi" || host === "opencode") {
 				for (const file of files)
 					if (fs.existsSync(file) && fs.readFileSync(file, "utf8").includes("aislop"))
-						entries.push(await runPlugin(host, file, scope, home, cwd));
+						entries.push(await runPlugin(host, file, scope, home, root));
 				continue;
 			}
 			for (const file of files)
 				for (const entry of entriesInFile(file)) {
-					const result = await runHookDoctorEntry(entry, options.timeoutMs);
+					const result = await runHookDoctorEntry(
+						entry,
+						options.timeoutMs,
+						spawnProcess,
+						true,
+						root,
+					);
 					entries.push({
 						host,
 						scope,
@@ -401,36 +384,15 @@ export const runHookDoctor = async (
 					});
 				}
 		}
-	const baselineRoot = resolveHookRoot(cwd);
 	const baseline = scopes.map((scope): HookDoctorBaseline => {
 		const hasStop = entries.some((entry) => entry.scope === scope && entry.stop === true);
 		if (!hasStop) return { scope, status: "not-required" };
-		const existing = readBaseline(baselineRoot);
+		const existing = readBaseline(root);
 		return existing ? { scope, status: "ok", score: existing.score } : { scope, status: "missing" };
 	});
-	return { entries, runtime: scopes.map((scope) => hookDoctorRuntime(scope, home, cwd)), baseline };
-};
-
-export const renderHookDoctor = (report: HookDoctorReport, json: boolean): string => {
-	if (json) return `${JSON.stringify(report)}\n`;
-	const lines = ["Hook doctor", ""];
-	for (const entry of report.entries)
-		lines.push(
-			`${entry.delivered ? "✓" : "✗"} ${entry.host} ${entry.scope} ${entry.eventGroup}: ${entry.commandForm}, started=${entry.started}, delivered=${entry.delivered}, timedOut=${entry.timedOut}`,
-		);
-	for (const runtime of report.runtime)
-		lines.push(
-			`${runtime.scope} runtime: ${runtime.status}, pair matches current=${runtime.pairMatchesCurrent}`,
-		);
-	for (const baseline of report.baseline) {
-		if (baseline.status === "missing")
-			lines.push(
-				`${baseline.scope} baseline: missing, quality gate inactive, run aislop hook install --quality-gate or aislop hook baseline`,
-			);
-		else if (baseline.status === "ok")
-			lines.push(`${baseline.scope} baseline: ok, score ${baseline.score}`);
-		else lines.push(`${baseline.scope} baseline: not required`);
-	}
-	if (report.entries.length === 0) lines.push("No managed hooks found.");
-	return `${lines.join("\n")}\n`;
+	return {
+		entries,
+		runtime: scopes.map((scope) => hookDoctorRuntime(scope, home, root)),
+		baseline,
+	};
 };

@@ -2,9 +2,9 @@ import os from "node:os";
 import { readPreferredHookRuntime } from "./runtime-file.js";
 import { isTemporaryExecution, resolveHookRuntime } from "./resolve.js";
 
-export const printHookRuntime = (json: boolean): void => {
+export const printHookRuntime = (json: boolean, cwd = process.cwd()): void => {
 	const runtime = resolveHookRuntime();
-	const preferred = readPreferredHookRuntime(process.cwd(), os.homedir());
+	const preferred = readPreferredHookRuntime(cwd, os.homedir());
 	const output = {
 		...runtime,
 		temporary: isTemporaryExecution(runtime.cliPath),
