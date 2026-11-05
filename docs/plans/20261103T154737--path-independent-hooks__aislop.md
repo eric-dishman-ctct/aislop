@@ -4,7 +4,7 @@ title: "PATH-independent hook commands"
 summary: "Make every aislop hook run without PATH lookup of aislop or node, per KD-007: install-time resolver, per-host command builders, run-time resolution in plugins, a temporary-install guard, and hook doctor"
 status: in-progress
 created: 2026-11-03T15:47:37
-updated: 2026-11-04T18:30:20
+updated: 2026-11-04T18:45:30
 tags: ["aislop", "hooks", "path"]
 ---
 
@@ -12,7 +12,7 @@ tags: ["aislop", "hooks", "path"]
 
 ## Status
 
-In progress. U1 committed as b47169d. U2 committed as 136ed93. U3 committed as 0d5c198. U4 committed as dc345c6. Phase 5 integration done, tagged wave-hooks-v2 on 7a94e09. U5 committed as d0d26d8, C14 closed. Tag wave-hooks-v2 on 5e350b8. U6 reviewed twice, accepted by split decision, C15 opened for U7. Accepted revision 2 after two plan review rounds. Round 2 findings are folded in as C5. Decision [KD-007](../decisions/20261103T140509--hook-command-embeds-node-and-cli-paths__aislop.md)
+In progress. U1 committed as b47169d. U2 committed as 136ed93. U3 committed as 0d5c198. U4 committed as dc345c6. Phase 5 integration done, tagged wave-hooks-v2 on 7a94e09. U5 committed as d0d26d8, C14 closed. Tag wave-hooks-v2 on 5e350b8. U6 committed as 74bd72e. Phase 8 (U7) added for C15, in progress. Accepted revision 2 after two plan review rounds. Round 2 findings are folded in as C5. Decision [KD-007](../decisions/20261103T140509--hook-command-embeds-node-and-cli-paths__aislop.md)
 accepted. No unit started. Baseline for all reviews: the commit that lands this plan.
 
 ## Context
@@ -177,6 +177,26 @@ runs in Phase 5 produced no block for this reason.
 - [x] Live check from the built CLI in a fresh temp git project: install with `--quality-gate`, make a regression edit, pipe PostToolUse and Stop payloads, assert the Stop output has `decision: block` with no manual `hook baseline` step ([p5-integration](../evidence/20261104-p5-integration.md))
 - [x] Commit, staged by name, 74bd72e
 
+### Phase 8: one project root for hook commands (U7, carried finding C15)
+
+Risk: LOW to MEDIUM. The change moves where project-scope hook commands read and write
+when the shell is in a subdirectory. From the project root nothing changes. A wrong root
+would write hook files into the wrong directory, which the built-CLI test must exclude.
+
+Problem: the hook adapters and the baseline step use `resolveHookRoot(cwd)`. The project-scope
+installer (`src/commands/hook.ts:89`), `hook status` (`src/hooks/status-render.ts:23`), the
+project runtime writer, and `hook doctor` (`src/hooks/doctor.ts:109,371-408`) use the literal
+`process.cwd()`. From a subdirectory, install writes into the subdirectory and doctor
+reports a root install as absent.
+
+- [ ] One helper gives the project root for all hook commands: `resolveHookRoot(process.cwd())`, computed once per command and passed down. Install, uninstall, status, doctor, runtime write and read, baseline, and the doctor probe payload `cwd` all use it
+- [ ] Built-CLI test: temp git project, `hook install --claude --project --quality-gate --yes` from `<root>/src/deep` writes `.claude/settings.json`, `.aislop/hook-runtime.json` and `.aislop/baseline.json` under `<root>`, nothing under `src/deep`
+- [ ] Built-CLI test: install at the root, then from `<root>/src/deep` `hook doctor --project` reports the entries delivered, `runtime: ok`, `baseline: ok`, exit 0, and `hook status` lists the install
+- [ ] Unit tests red-first per Mechanisms row with injected cwd, deletion checks pasted
+- [ ] Global scope is unchanged: a test pins that `--global` never uses the project root for hook files
+- [ ] Docs: one sentence in docs/commands.md stating that project hook commands act on the project root from any subdirectory
+- [ ] Commit, staged by name
+
 ## Mechanisms
 
 | Mechanism | Property that must hold | Literal value | Test |
@@ -219,6 +239,10 @@ runs in Phase 5 produced no block for this reason.
 | U6 baseline capture | Install with the gate writes a baseline only when none exists | `.aislop/baseline.json`, `captureBaseline(cwd)` | `tests/hooks/baseline-install.test.ts`: captures a missing baseline |
 | U6 dry run | `--dry-run` never writes the baseline | `dryRun` short-circuit before `captureBaseline` | `tests/hooks/baseline-install.test.ts`: plans the baseline without writing it during a dry run |
 | U6 doctor baseline row | Missing baseline with an installed Stop hook is exit 1 | `baseline: missing, quality gate inactive` | `tests/hooks/doctor.test.ts`: uses the project-root baseline when the doctor runs from a nested directory |
+| U7 install root | Project install from a subdirectory writes under the project root | `resolveHookRoot(process.cwd())` in `resolveHookInstallOpts` | |
+| U7 doctor root | Doctor reads hook settings, runtime file, and baseline from the project root | one `root` value in `hookDoctor` | |
+| U7 status root | `hook status` reads the project scope from the project root | `resolveHookRoot` in `status-render.ts` | |
+| U7 global unchanged | Global scope paths never use the project root | `home` for `scope === "global"` | |
 
 ## Gates
 
@@ -236,6 +260,8 @@ runs in Phase 5 produced no block for this reason.
 | G11 | Live VS Code transcript free of CLI failure statements after a block | yes | yes, agent ran the absolute verify_fix command, [p5-integration](../evidence/20261104-p5-integration.md) | [x] |
 | G12 | U6 rows with a reviewer-confirmed test | 3 of 3 | 3 of 3, eight mutations caught in round 1, nested-cwd baseline read caught in round 2, [p5-integration](../evidence/20261104-p5-integration.md) | [x] |
 | G13 | Built-CLI fresh project blocks on the first regression after install, no manual baseline | yes | yes, Stop decision block, score 100 to 89, reviewer probe round 1, [p5-integration](../evidence/20261104-p5-integration.md) | [x] |
+| G14 | U7 rows with a reviewer-confirmed test | 4 of 4 | | [ ] |
+| G15 | Built CLI: root install, nested doctor exit 0 with runtime ok and baseline ok | yes | | [ ] |
 | G9 | Builders labelled unverified on Windows in docs | present | present, README.md:294 and docs/commands.md:202, [p5-integration](../evidence/20261104-p5-integration.md) | [x] |
 
 ## Review log
