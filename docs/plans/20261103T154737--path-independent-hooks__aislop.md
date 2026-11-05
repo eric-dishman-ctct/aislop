@@ -4,7 +4,7 @@ title: "PATH-independent hook commands"
 summary: "Make every aislop hook run without PATH lookup of aislop or node, per KD-007: install-time resolver, per-host command builders, run-time resolution in plugins, a temporary-install guard, and hook doctor"
 status: in-progress
 created: 2026-11-03T15:47:37
-updated: 2026-11-04T14:26:27
+updated: 2026-11-04T18:30:20
 tags: ["aislop", "hooks", "path"]
 ---
 
@@ -12,7 +12,7 @@ tags: ["aislop", "hooks", "path"]
 
 ## Status
 
-In progress. U1 committed as b47169d. U2 committed as 136ed93. U3 committed as 0d5c198. U4 committed as dc345c6. Phase 5 integration done, tagged wave-hooks-v2 on 7a94e09. U5 committed as d0d26d8, C14 closed. Tag wave-hooks-v2 on 5e350b8. Phase 7 (U6) added for C13, in progress. Accepted revision 2 after two plan review rounds. Round 2 findings are folded in as C5. Decision [KD-007](../decisions/20261103T140509--hook-command-embeds-node-and-cli-paths__aislop.md)
+In progress. U1 committed as b47169d. U2 committed as 136ed93. U3 committed as 0d5c198. U4 committed as dc345c6. Phase 5 integration done, tagged wave-hooks-v2 on 7a94e09. U5 committed as d0d26d8, C14 closed. Tag wave-hooks-v2 on 5e350b8. U6 reviewed twice, accepted by split decision, C15 opened for U7. Accepted revision 2 after two plan review rounds. Round 2 findings are folded in as C5. Decision [KD-007](../decisions/20261103T140509--hook-command-embeds-node-and-cli-paths__aislop.md)
 accepted. No unit started. Baseline for all reviews: the commit that lands this plan.
 
 ## Context
@@ -169,13 +169,13 @@ Problem: `hook install --quality-gate` writes the Stop hook but no `.aislop/base
 Without that file the gate never reports `regressed` and never blocks, silently. Two live
 runs in Phase 5 produced no block for this reason.
 
-- [ ] `hook install` with `--quality-gate` and not `--dry-run` captures a baseline in the project cwd through the existing `captureBaseline` when `.aislop/baseline.json` is absent. An existing baseline is kept. The summary prints a `Baseline` row with the score and the path, or `kept` with the existing score
-- [ ] `--dry-run` prints the planned `Baseline` row and writes nothing
-- [ ] `hook doctor` reports `baseline: missing, quality gate inactive` as a failure (exit 1) when a Stop hook is installed for the scope and no baseline exists in the cwd, and `baseline: ok, score N` otherwise. Without a Stop hook the row is informational
-- [ ] Tests red-first per Mechanisms row, deletion checks pasted. Temp HOME and temp project, no real files
-- [ ] Docs: README.md and docs/commands.md one sentence each, and the AISLOP.md body if it mentions the baseline
-- [ ] Live check from the built CLI in a fresh temp git project: install with `--quality-gate`, make a regression edit, pipe PostToolUse and Stop payloads, assert the Stop output has `decision: block` with no manual `hook baseline` step
-- [ ] Commit, staged by name
+- [x] `hook install` with `--quality-gate` and not `--dry-run` captures a baseline in the project cwd through the existing `captureBaseline` when `.aislop/baseline.json` is absent. An existing baseline is kept. The summary prints a `Baseline` row with the score and the path, or `kept` with the existing score ([p5-integration](../evidence/20261104-p5-integration.md))
+- [x] `--dry-run` prints the planned `Baseline` row and writes nothing ([p5-integration](../evidence/20261104-p5-integration.md))
+- [x] `hook doctor` reports `baseline: missing, quality gate inactive` as a failure (exit 1) when a Stop hook is installed for the scope and no baseline exists in the cwd, and `baseline: ok, score N` otherwise. Without a Stop hook the row is informational ([p5-integration](../evidence/20261104-p5-integration.md))
+- [x] Tests red-first per Mechanisms row, deletion checks pasted. Temp HOME and temp project, no real files ([p5-integration](../evidence/20261104-p5-integration.md))
+- [x] Docs: README.md and docs/commands.md one sentence each, and the AISLOP.md body if it mentions the baseline ([p5-integration](../evidence/20261104-p5-integration.md))
+- [x] Live check from the built CLI in a fresh temp git project: install with `--quality-gate`, make a regression edit, pipe PostToolUse and Stop payloads, assert the Stop output has `decision: block` with no manual `hook baseline` step ([p5-integration](../evidence/20261104-p5-integration.md))
+- [x] Commit, staged by name, 74bd72e
 
 ## Mechanisms
 
@@ -216,9 +216,9 @@ runs in Phase 5 produced no block for this reason.
 | U5 command form | Absolute when the hook ran from an absolute command, portable otherwise | `process.execPath`, `process.argv[1]` basename is not `aislop` | `tests/hooks/runtime.test.ts`: U5 command form |
 | U5 verify action | A Stop block includes `verify_fix` with the touched files | `id: "verify_fix"`, `scan --changes` | `tests/hooks/feedback.test.ts`: U5 verify action |
 | U5 instruction text | Generated instructions name the rule and the fence hash changes | "run `aislop` only with the exact command from `suggestedActions`" | `tests/hooks/assets.test.ts`: U5 instruction text |
-| U6 baseline capture | Install with the gate writes a baseline only when none exists | `.aislop/baseline.json`, `captureBaseline(cwd)` | |
-| U6 dry run | `--dry-run` never writes the baseline | `dryRun` short-circuit before `captureBaseline` | |
-| U6 doctor baseline row | Missing baseline with an installed Stop hook is exit 1 | `baseline: missing, quality gate inactive` | |
+| U6 baseline capture | Install with the gate writes a baseline only when none exists | `.aislop/baseline.json`, `captureBaseline(cwd)` | `tests/hooks/baseline-install.test.ts`: captures a missing baseline |
+| U6 dry run | `--dry-run` never writes the baseline | `dryRun` short-circuit before `captureBaseline` | `tests/hooks/baseline-install.test.ts`: plans the baseline without writing it during a dry run |
+| U6 doctor baseline row | Missing baseline with an installed Stop hook is exit 1 | `baseline: missing, quality gate inactive` | `tests/hooks/doctor.test.ts`: uses the project-root baseline when the doctor runs from a nested directory |
 
 ## Gates
 
@@ -234,8 +234,8 @@ runs in Phase 5 produced no block for this reason.
 | G8 | Live refusal under `npx` from a packed tarball, exit 1, no file written | yes | yes, exit 1, no hook file, [p5-integration](../evidence/20261104-p5-integration.md) | [x] |
 | G10 | U5 rows with a reviewer-confirmed test | 3 of 3 | 3 of 3, round 1 mutations a to i caught, round 2 five mutations caught, [p5-integration](../evidence/20261104-p5-integration.md) | [x] |
 | G11 | Live VS Code transcript free of CLI failure statements after a block | yes | yes, agent ran the absolute verify_fix command, [p5-integration](../evidence/20261104-p5-integration.md) | [x] |
-| G12 | U6 rows with a reviewer-confirmed test | 3 of 3 | | [ ] |
-| G13 | Built-CLI fresh project blocks on the first regression after install, no manual baseline | yes | | [ ] |
+| G12 | U6 rows with a reviewer-confirmed test | 3 of 3 | 3 of 3, eight mutations caught in round 1, nested-cwd baseline read caught in round 2, [p5-integration](../evidence/20261104-p5-integration.md) | [x] |
+| G13 | Built-CLI fresh project blocks on the first regression after install, no manual baseline | yes | yes, Stop decision block, score 100 to 89, reviewer probe round 1, [p5-integration](../evidence/20261104-p5-integration.md) | [x] |
 | G9 | Builders labelled unverified on Windows in docs | present | present, README.md:294 and docs/commands.md:202, [p5-integration](../evidence/20261104-p5-integration.md) | [x] |
 
 ## Review log
@@ -256,6 +256,8 @@ runs in Phase 5 produced no block for this reason.
 | U4b | 1 | PASS: status rendering moved to src/hooks/status-render.ts, all directives removed, help and output byte-neutral, four U4 mutations still caught. Non-blocking: inert-probe test checked identity file only, HOME-tree assertion added afterwards red-first (no further round) | 0 | 1 | 2026-11-04 |
 | U5 | 1 | BLOCK: Stop reason contradicted the portable verify command, Copilot fence sentence unpinned |
 | U5 | 2 | PASS, zero findings, five mutations caught |
+| U6 | 1 | BLOCK: doctor read the baseline at the literal cwd, installer writes at the project root |
+| U6 | 2 | BLOCK: doctor also reads project hook settings and the runtime file at the literal cwd (pre-existing from dc345c6). Reassessment: split, U6 accepted for its own rows, doctor root resolution becomes U7 |
 | plan | 2 | BLOCK, three findings folded into the text and C5. Round cap reached, plan accepted by the user with C5 mandatory | 3 | 0 | 2026-11-03 |
 
 ## Carried findings
@@ -272,8 +274,9 @@ runs in Phase 5 produced no block for this reason.
 | C10 | U4 needed three blocked rounds. Reassessment (user approved) found the final block was a self-scan suppression, not a doctor defect, and split a refactor leg U4b | Review log | Closed by U4b |
 | C11 | Cross-seam: swapping `exec` and `args[0]` in `copilotExec` fails only `runtime.test.ts`. `install-copilot.test.ts:65` checks `exec` is a string, not the Node path | Phase 5 item 5 | Open, next wave |
 | C12 | The temporary-install refusal still writes the telemetry identity `.aislop/install_id` before the guard runs | Phase 5 item 3 | Open, next wave |
-| C13 | `hook install --quality-gate` does not capture a baseline. Without `.aislop/baseline.json` the gate never blocks. Two live runs produced no block for this reason | Phase 5 item 1 | Open, docs note or installer change, next wave |
+| C13 | `hook install --quality-gate` does not capture a baseline. Without `.aislop/baseline.json` the gate never blocks. Two live runs produced no block for this reason | Phase 5 item 1 | Closed by U6, G13 |
 | C14 | Inside VS Code the agent cannot run bare `aislop scan` as the block message suggests, because Node is not on the VS Code PATH. The agent fixed the code from the findings alone | Phase 5 item 1 | Closed by U5, G11 |
+| C15 | `hook doctor --project` reads hook settings (src/hooks/doctor.ts:379-408) and the project runtime file (src/hooks/doctor.ts:109) at the literal cwd, so from a subdirectory it reports `baseline: not required` and `runtime: missing` for a root install. Pre-existing from dc345c6, exposed by U6 | U6 review round 2 | Open, U7 |
 | C4 | Plan round 1: runtime file location, plugin temporary guard, inert doctor probe, plugin doctor execution, stale path, built-CLI test | plan review 1 | Phase 1, 3, 4 tasks and rows |
 | C3 | Copilot scans report telemetry agent `claude` (foundation C7) | wave 1 | Not in scope |
 

@@ -99,3 +99,17 @@ Observation, not a finding: before it read the hook file, Copilot ran one grep o
 aislop source to learn how the prefix is built. Harmless.
 
 Result: G11 yes. C14 closed.
+
+## Phase 7, U6 baseline on install (G12, G13)
+
+Round 1 reviewer, built CLI in a temp git project: `hook install --claude --project
+--quality-gate --yes` created `.aislop/baseline.json` and printed the `Baseline` row.
+A regression edit, then PostToolUse and Stop payloads: Stop returned `decision="block"` with
+reason `aislop: score dropped from 100 to 89. Fix the 1 finding before finishing. Use the
+verify_fix command in suggestedActions; do not run bare aislop, it may not be on PATH here.`
+No manual `hook baseline` call. G13 yes. Eight mutations (overwrite existing, capture without
+the gate, capture in dry run, no exit 1 on missing, missing with a baseline, required without
+Stop, row removed, JSON row removed) each failed a named test. Round 1 blocked on the doctor
+reading the baseline at the literal cwd. Round 2 fixed that, caught at
+`tests/hooks/doctor.test.ts:417`, and found the wider pre-existing root problem, C15.
+Decision after two blocks: split. U6 accepted for its own rows, C15 goes to U7.
