@@ -35,6 +35,56 @@ describe("U1 built-CLI resolution", () => {
 		expect(runtime.source).toBe("none");
 	});
 
+	it("U8 built CLI: refuses temporary installs without creating an identity", () => {
+		const temporaryDir = path.join(tempDir(), "_npx", "aislop");
+		const temporaryCli = path.join(temporaryDir, "cli.js");
+		fs.mkdirSync(temporaryDir, { recursive: true });
+		fs.copyFileSync(path.resolve("dist/cli.js"), temporaryCli);
+		fs.symlinkSync(path.resolve("node_modules"), path.join(temporaryDir, "node_modules"));
+
+		for (const command of [["hook", "install"], ["hooks", "install"], ["install"]]) {
+			const home = tempDir();
+			const env = {
+				...process.env,
+				HOME: home,
+				AISLOP_TELEMETRY_DEBUG: "1",
+				AISLOP_TELEMETRY_DRY_RUN: "1",
+			};
+			delete env.CI;
+			delete env.AISLOP_NO_TELEMETRY;
+			delete env.XDG_STATE_HOME;
+
+			const refused = spawnSync(
+				process.execPath,
+				[temporaryCli, ...command, "--claude", "--global", "--yes"],
+				{ env, encoding: "utf8" },
+			);
+			expect(refused.status).toBe(1);
+			expect(fs.existsSync(path.join(home, ".aislop"))).toBe(false);
+			expect(fs.existsSync(path.join(home, ".claude"))).toBe(false);
+			expect(refused.stderr).not.toContain('"event":"cli_installed"');
+		}
+
+		const forcedHome = tempDir();
+		const forcedEnv = {
+			...process.env,
+			HOME: forcedHome,
+			AISLOP_TELEMETRY_DEBUG: "1",
+			AISLOP_TELEMETRY_DRY_RUN: "1",
+		};
+		delete forcedEnv.CI;
+		delete forcedEnv.AISLOP_NO_TELEMETRY;
+		delete forcedEnv.XDG_STATE_HOME;
+		const forced = spawnSync(
+			process.execPath,
+			[temporaryCli, "hook", "install", "--claude", "--global", "--yes", "--force-temporary"],
+			{ env: forcedEnv, encoding: "utf8" },
+		);
+		expect(forced.status).toBe(0);
+		expect(fs.existsSync(path.join(forcedHome, ".aislop", "install_id"))).toBe(true);
+		expect(forced.stderr).toContain('"event":"cli_installed"');
+	});
+
 	it("built-CLI resolution: resolves a symlink to its target", () => {
 		const cli = path.resolve("dist/cli.js");
 		if (!fs.existsSync(cli)) execFileSync("pnpm", ["build"], { stdio: "inherit" });

@@ -15,9 +15,12 @@ import { loadConfig } from "../config/index.js";
 import { renderHookDoctor, runHookDoctor } from "../hooks/doctor.js";
 import { type AgentName, detectInstalledAgents } from "../hooks/install/registry.js";
 import { resolveHookRoot } from "../hooks/io/project-root.js";
+import { allowHookRuntimeInstall } from "../hooks/runtime/install.js";
 import { printHookRuntime } from "../hooks/runtime/status.js";
 import { withCommandLifecycle } from "../telemetry/index.js";
 import { log } from "../ui/logger.js";
+
+export const HOOK_COMMAND_NAMES = ["hook", "hooks"] as const;
 
 type AgentFlagOpts = Partial<
 	Record<
@@ -158,6 +161,7 @@ const addUninstallOptions = (command: Command): Command =>
 const runInstallAction = async (positional: string[], opts: InstallOpts): Promise<void> => {
 	const agents = await pickAgents("install", opts, positional);
 	if (agents === null || agents.length === 0) return;
+	if (!allowHookRuntimeInstall(Boolean(opts.dryRun), Boolean(opts.forceTemporary))) return;
 	await withCommandLifecycle(
 		{ command: "hook_install", config: loadConfig(process.cwd()).telemetry },
 		async () => {
@@ -314,8 +318,8 @@ const registerCallbacks = (hook: Command): void => {
 
 export const registerHookCommand = (program: Command): void => {
 	const hook = program
-		.command("hook")
-		.alias("hooks")
+		.command(HOOK_COMMAND_NAMES[0])
+		.alias(HOOK_COMMAND_NAMES[1])
 		.description("Manage per-edit coding-agent hooks");
 	registerInstall(hook);
 	registerUninstall(hook);

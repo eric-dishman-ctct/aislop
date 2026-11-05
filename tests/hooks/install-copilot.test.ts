@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { sentinelHash } from "../../src/hooks/io/sentinel.js";
+import { resolveHookRuntime } from "../../src/hooks/runtime/resolve.js";
 import {
 	installCopilot,
 	resolveCopilotPaths,
@@ -57,12 +58,14 @@ describe("Copilot runtime hooks", () => {
 		installCopilot(opts("project", true, true));
 		const absolute = JSON.parse(fs.readFileSync(paths.hookFile, "utf8"));
 		const capture = JSON.parse(fixture("copilot-B-hookfile.json"));
+		const runtime = resolveHookRuntime();
 		for (const event of ["PostToolUse", "Stop"] as const) {
 			const before = portable.hooks[event][0].hooks[0];
 			const after = absolute.hooks[event][0].hooks[0];
 			expect(absolute.hooks[event][0].matcher).toBe(capture.hooks[event][0].matcher);
 			expect(after).not.toHaveProperty("command");
-			expect(after.exec).toBeTypeOf("string");
+			expect(after.exec).toBe(runtime.nodePath);
+			expect(after.args[0]).toBe(runtime.cliPath);
 			expect(after.args).toEqual(expect.arrayContaining(["hook", "claude"]));
 			if (event === "Stop") {
 				expect(after.args.slice(-3)).toEqual(["hook", "claude", "--stop"]);

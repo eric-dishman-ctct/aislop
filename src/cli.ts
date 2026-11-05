@@ -1,7 +1,11 @@
 import { existsSync } from "node:fs";
 import { Command, Option } from "commander";
 import { registerAgentCommand } from "./cli/agent-command.js";
-import { registerHookAliases, registerHookCommand } from "./cli/hook-command.js";
+import {
+	HOOK_COMMAND_NAMES,
+	registerHookAliases,
+	registerHookCommand,
+} from "./cli/hook-command.js";
 import { registerExtraCommands } from "./cli-extra-commands.js";
 import { FIX_AGENT_FLAGS, matchFixAgent } from "./cli-fix-agents.js";
 import { commaSeparatedParser, noFlagsPassed, runScan, type ScanFlags } from "./cli-scan.js";
@@ -25,6 +29,7 @@ import { renderRootHelp } from "./ui/home.js";
 import { log } from "./ui/logger.js";
 import { suggestClosest } from "./ui/suggest.js";
 import { maybeNotifyUpdate } from "./update-notifier.js";
+import { isTemporaryExecution } from "./hooks/runtime/resolve.js";
 import { ignoreBrokenPipes } from "./utils/broken-pipe.js";
 import { killActiveChildren } from "./utils/subprocess.js";
 import { APP_VERSION } from "./version.js";
@@ -67,6 +72,19 @@ const fireInstalledOnce = (): void => {
 
 const hasNoUserArgs = (): boolean => process.argv.slice(2).length === 0;
 const isDoctorProbe = (): boolean => process.argv.includes("--doctor-probe");
+
+const isRefusedTemporaryInstall = (): boolean => {
+	const args = process.argv.slice(2);
+	const isHookInstall =
+		(HOOK_COMMAND_NAMES.includes(args[0] as (typeof HOOK_COMMAND_NAMES)[number]) &&
+			args[1] === "install") ||
+		args[0] === "install";
+	return (
+		isHookInstall &&
+		isTemporaryExecution(process.argv[1] ?? "") &&
+		!args.includes("--force-temporary")
+	);
+};
 
 const shouldRenderRootHelp = (): boolean => {
 	const args = process.argv.slice(2);
@@ -251,7 +269,7 @@ registerHookCommand(program);
 registerHookAliases(program);
 
 const main = async () => {
-	if (!isDoctorProbe()) fireInstalledOnce();
+	if (!isDoctorProbe() && !isRefusedTemporaryInstall()) fireInstalledOnce();
 	if (shouldRenderPlainVersion()) {
 		process.stdout.write(`${APP_VERSION}\n`);
 		return;
