@@ -113,3 +113,17 @@ Stop, row removed, JSON row removed) each failed a named test. Round 1 blocked o
 reading the baseline at the literal cwd. Round 2 fixed that, caught at
 `tests/hooks/doctor.test.ts:417`, and found the wider pre-existing root problem, C15.
 Decision after two blocks: split. U6 accepted for its own rows, C15 goes to U7.
+
+## Phase 8, U7 one project root for hook commands (G14, G15)
+
+Reviewer built-CLI probes from `<root>/src/deep` in a temp git project: a project install
+with `--absolute --quality-gate` created `.claude/settings.json`, `.claude/AISLOP.md`,
+`.claude/CLAUDE.md`, `.aislop/hook-runtime.json`, and `.aislop/baseline.json` at the root and
+nothing under `src/deep`. Nested `hook doctor --project` reported three delivered entries,
+`project runtime: ok, pair matches current=true`, `project baseline: ok, score 100`, exit 0.
+Nested `hook status` listed the install, `hook runtime` reported source project, nested
+uninstall removed the root settings file. A global install from the nested directory wrote
+only under the temp HOME. A project with no `.git` and no `.aislop` markers behaves as before
+U7 (install at the cwd), compared against a build of f881834. Round 1 blocked on a double
+root resolution and two unpinned seams. Round 2 caught all three mutations
+(`hook-command.test.ts:68`, `hook-root.test.ts:131`, `hook-root.test.ts:176`). G15 yes.

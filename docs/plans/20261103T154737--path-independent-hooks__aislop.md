@@ -4,7 +4,7 @@ title: "PATH-independent hook commands"
 summary: "Make every aislop hook run without PATH lookup of aislop or node, per KD-007: install-time resolver, per-host command builders, run-time resolution in plugins, a temporary-install guard, and hook doctor"
 status: in-progress
 created: 2026-11-03T15:47:37
-updated: 2026-11-04T18:45:30
+updated: 2026-11-04T19:09:21
 tags: ["aislop", "hooks", "path"]
 ---
 
@@ -12,7 +12,7 @@ tags: ["aislop", "hooks", "path"]
 
 ## Status
 
-In progress. U1 committed as b47169d. U2 committed as 136ed93. U3 committed as 0d5c198. U4 committed as dc345c6. Phase 5 integration done, tagged wave-hooks-v2 on 7a94e09. U5 committed as d0d26d8, C14 closed. Tag wave-hooks-v2 on 5e350b8. U6 committed as 74bd72e. Phase 8 (U7) added for C15, in progress. Accepted revision 2 after two plan review rounds. Round 2 findings are folded in as C5. Decision [KD-007](../decisions/20261103T140509--hook-command-embeds-node-and-cli-paths__aislop.md)
+In progress. U1 committed as b47169d. U2 committed as 136ed93. U3 committed as 0d5c198. U4 committed as dc345c6. Phase 5 integration done, tagged wave-hooks-v2 on 7a94e09. U5 committed as d0d26d8, C14 closed. Tag wave-hooks-v2 on 5e350b8. U6 committed as 74bd72e. U7 reviewed, PASS in round 2, C15 closed. Accepted revision 2 after two plan review rounds. Round 2 findings are folded in as C5. Decision [KD-007](../decisions/20261103T140509--hook-command-embeds-node-and-cli-paths__aislop.md)
 accepted. No unit started. Baseline for all reviews: the commit that lands this plan.
 
 ## Context
@@ -189,13 +189,13 @@ project runtime writer, and `hook doctor` (`src/hooks/doctor.ts:109,371-408`) us
 `process.cwd()`. From a subdirectory, install writes into the subdirectory and doctor
 reports a root install as absent.
 
-- [ ] One helper gives the project root for all hook commands: `resolveHookRoot(process.cwd())`, computed once per command and passed down. Install, uninstall, status, doctor, runtime write and read, baseline, and the doctor probe payload `cwd` all use it
-- [ ] Built-CLI test: temp git project, `hook install --claude --project --quality-gate --yes` from `<root>/src/deep` writes `.claude/settings.json`, `.aislop/hook-runtime.json` and `.aislop/baseline.json` under `<root>`, nothing under `src/deep`
-- [ ] Built-CLI test: install at the root, then from `<root>/src/deep` `hook doctor --project` reports the entries delivered, `runtime: ok`, `baseline: ok`, exit 0, and `hook status` lists the install
-- [ ] Unit tests red-first per Mechanisms row with injected cwd, deletion checks pasted
-- [ ] Global scope is unchanged: a test pins that `--global` never uses the project root for hook files
-- [ ] Docs: one sentence in docs/commands.md stating that project hook commands act on the project root from any subdirectory
-- [ ] Commit, staged by name
+- [x] One helper gives the project root for all hook commands: `resolveHookRoot(process.cwd())`, computed once per command and passed down. Install, uninstall, status, doctor, runtime write and read, baseline, and the doctor probe payload `cwd` all use it ([p5-integration](../evidence/20261104-p5-integration.md))
+- [x] Built-CLI test: temp git project, `hook install --claude --project --quality-gate --yes` from `<root>/src/deep` writes `.claude/settings.json`, `.aislop/hook-runtime.json` and `.aislop/baseline.json` under `<root>`, nothing under `src/deep` ([p5-integration](../evidence/20261104-p5-integration.md))
+- [x] Built-CLI test: install at the root, then from `<root>/src/deep` `hook doctor --project` reports the entries delivered, `runtime: ok`, `baseline: ok`, exit 0, and `hook status` lists the install ([p5-integration](../evidence/20261104-p5-integration.md))
+- [x] Unit tests red-first per Mechanisms row with injected cwd, deletion checks pasted ([p5-integration](../evidence/20261104-p5-integration.md))
+- [x] Global scope is unchanged: a test pins that `--global` never uses the project root for hook files ([p5-integration](../evidence/20261104-p5-integration.md))
+- [x] Docs: one sentence in docs/commands.md stating that project hook commands act on the project root from any subdirectory ([p5-integration](../evidence/20261104-p5-integration.md))
+- [x] Commit, staged by name, 80d11f4
 
 ## Mechanisms
 
@@ -239,10 +239,12 @@ reports a root install as absent.
 | U6 baseline capture | Install with the gate writes a baseline only when none exists | `.aislop/baseline.json`, `captureBaseline(cwd)` | `tests/hooks/baseline-install.test.ts`: captures a missing baseline |
 | U6 dry run | `--dry-run` never writes the baseline | `dryRun` short-circuit before `captureBaseline` | `tests/hooks/baseline-install.test.ts`: plans the baseline without writing it during a dry run |
 | U6 doctor baseline row | Missing baseline with an installed Stop hook is exit 1 | `baseline: missing, quality gate inactive` | `tests/hooks/doctor.test.ts`: uses the project-root baseline when the doctor runs from a nested directory |
-| U7 install root | Project install from a subdirectory writes under the project root | `resolveHookRoot(process.cwd())` in `resolveHookInstallOpts` | |
-| U7 doctor root | Doctor reads hook settings, runtime file, and baseline from the project root | one `root` value in `hookDoctor` | |
-| U7 status root | `hook status` reads the project scope from the project root | `resolveHookRoot` in `status-render.ts` | |
-| U7 global unchanged | Global scope paths never use the project root | `home` for `scope === "global"` | |
+| U7 install root | Project install from a subdirectory writes under the project root | `resolveHookRoot(process.cwd())` in `resolveHookInstallOpts` | `tests/hooks/hook-root.test.ts`: install root |
+| U7 uninstall root | Project uninstall from a subdirectory removes root settings | `resolveHookRoot(process.cwd())` in `hookUninstall` | `tests/hooks/hook-root.test.ts`: uninstall root |
+| U7 doctor root | Doctor resolves the nested cwd once and reads root hook state | one `root` value in `runHookDoctor` | `tests/hooks/hook-command.test.ts`: resolves the nested cwd once in the doctor entry; `tests/hooks/hook-root.test.ts`: doctor root |
+| U7 doctor probe cwd | Doctor sends the project root in its probe payload | `root` passed to `runHookDoctorEntry` | `tests/hooks/hook-root.test.ts`: doctor probe sends the project root as cwd |
+| U7 status root | `hook status` reads the project scope from the project root | `resolveHookRoot` in `status-render.ts` | `tests/hooks/hook-root.test.ts`: status root |
+| U7 global unchanged | Global scope paths never use the project root | `home` for `scope === "global"` | `tests/hooks/hook-root.test.ts`: global unchanged |
 
 ## Gates
 
@@ -260,8 +262,8 @@ reports a root install as absent.
 | G11 | Live VS Code transcript free of CLI failure statements after a block | yes | yes, agent ran the absolute verify_fix command, [p5-integration](../evidence/20261104-p5-integration.md) | [x] |
 | G12 | U6 rows with a reviewer-confirmed test | 3 of 3 | 3 of 3, eight mutations caught in round 1, nested-cwd baseline read caught in round 2, [p5-integration](../evidence/20261104-p5-integration.md) | [x] |
 | G13 | Built-CLI fresh project blocks on the first regression after install, no manual baseline | yes | yes, Stop decision block, score 100 to 89, reviewer probe round 1, [p5-integration](../evidence/20261104-p5-integration.md) | [x] |
-| G14 | U7 rows with a reviewer-confirmed test | 4 of 4 | | [ ] |
-| G15 | Built CLI: root install, nested doctor exit 0 with runtime ok and baseline ok | yes | | [ ] |
+| G14 | U7 rows with a reviewer-confirmed test | 4 of 4 | 4 of 4, plus uninstall, probe cwd, and single-resolution pins in round 2, [p5-integration](../evidence/20261104-p5-integration.md) | [x] |
+| G15 | Built CLI: root install, nested doctor exit 0 with runtime ok and baseline ok | yes | yes, both review rounds, [p5-integration](../evidence/20261104-p5-integration.md) | [x] |
 | G9 | Builders labelled unverified on Windows in docs | present | present, README.md:294 and docs/commands.md:202, [p5-integration](../evidence/20261104-p5-integration.md) | [x] |
 
 ## Review log
@@ -284,6 +286,8 @@ reports a root install as absent.
 | U5 | 2 | PASS, zero findings, five mutations caught |
 | U6 | 1 | BLOCK: doctor read the baseline at the literal cwd, installer writes at the project root |
 | U6 | 2 | BLOCK: doctor also reads project hook settings and the runtime file at the literal cwd (pre-existing from dc345c6). Reassessment: split, U6 accepted for its own rows, doctor root resolution becomes U7 |
+| U7 | 1 | BLOCK: root resolved twice on the doctor path, nested uninstall and probe payload cwd unpinned, doctor.ts at the size limit |
+| U7 | 2 | PASS, zero findings, three mutations caught, report helpers moved to doctor-report.ts |
 | plan | 2 | BLOCK, three findings folded into the text and C5. Round cap reached, plan accepted by the user with C5 mandatory | 3 | 0 | 2026-11-03 |
 
 ## Carried findings
@@ -302,7 +306,7 @@ reports a root install as absent.
 | C12 | The temporary-install refusal still writes the telemetry identity `.aislop/install_id` before the guard runs | Phase 5 item 3 | Open, next wave |
 | C13 | `hook install --quality-gate` does not capture a baseline. Without `.aislop/baseline.json` the gate never blocks. Two live runs produced no block for this reason | Phase 5 item 1 | Closed by U6, G13 |
 | C14 | Inside VS Code the agent cannot run bare `aislop scan` as the block message suggests, because Node is not on the VS Code PATH. The agent fixed the code from the findings alone | Phase 5 item 1 | Closed by U5, G11 |
-| C15 | `hook doctor --project` reads hook settings (src/hooks/doctor.ts:379-408) and the project runtime file (src/hooks/doctor.ts:109) at the literal cwd, so from a subdirectory it reports `baseline: not required` and `runtime: missing` for a root install. Pre-existing from dc345c6, exposed by U6 | U6 review round 2 | Open, U7 |
+| C15 | `hook doctor --project` reads hook settings (src/hooks/doctor.ts:379-408) and the project runtime file (src/hooks/doctor.ts:109) at the literal cwd, so from a subdirectory it reports `baseline: not required` and `runtime: missing` for a root install. Pre-existing from dc345c6, exposed by U6 | U6 review round 2 | Closed by U7, G15 |
 | C4 | Plan round 1: runtime file location, plugin temporary guard, inert doctor probe, plugin doctor execution, stale path, built-CLI test | plan review 1 | Phase 1, 3, 4 tasks and rows |
 | C3 | Copilot scans report telemetry agent `claude` (foundation C7) | wave 1 | Not in scope |
 
