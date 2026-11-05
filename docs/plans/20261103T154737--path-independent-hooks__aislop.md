@@ -4,7 +4,7 @@ title: "PATH-independent hook commands"
 summary: "Make every aislop hook run without PATH lookup of aislop or node, per KD-007: install-time resolver, per-host command builders, run-time resolution in plugins, a temporary-install guard, and hook doctor"
 status: in-progress
 created: 2026-11-03T15:47:37
-updated: 2026-11-04T19:09:21
+updated: 2026-11-05T08:03:42
 tags: ["aislop", "hooks", "path"]
 ---
 
@@ -12,7 +12,7 @@ tags: ["aislop", "hooks", "path"]
 
 ## Status
 
-In progress. U1 committed as b47169d. U2 committed as 136ed93. U3 committed as 0d5c198. U4 committed as dc345c6. Phase 5 integration done, tagged wave-hooks-v2 on 7a94e09. U5 committed as d0d26d8, C14 closed. Tag wave-hooks-v2 on 5e350b8. U6 committed as 74bd72e. U7 reviewed, PASS in round 2, C15 closed. Accepted revision 2 after two plan review rounds. Round 2 findings are folded in as C5. Decision [KD-007](../decisions/20261103T140509--hook-command-embeds-node-and-cli-paths__aislop.md)
+In progress. U1 committed as b47169d. U2 committed as 136ed93. U3 committed as 0d5c198. U4 committed as dc345c6. Phase 5 integration done, tagged wave-hooks-v2 on 7a94e09. U5 committed as d0d26d8, C14 closed. Tag wave-hooks-v2 on 5e350b8. U6 committed as 74bd72e. U7 committed as 80d11f4. Phase 9 (U8) added for C11 and C12, in progress. Accepted revision 2 after two plan review rounds. Round 2 findings are folded in as C5. Decision [KD-007](../decisions/20261103T140509--hook-command-embeds-node-and-cli-paths__aislop.md)
 accepted. No unit started. Baseline for all reviews: the commit that lands this plan.
 
 ## Context
@@ -197,6 +197,17 @@ reports a root install as absent.
 - [x] Docs: one sentence in docs/commands.md stating that project hook commands act on the project root from any subdirectory ([p5-integration](../evidence/20261104-p5-integration.md))
 - [x] Commit, staged by name, 80d11f4
 
+### Phase 9: close C11 and C12 (U8)
+
+Risk: LOW. One guard moves earlier in `src/cli.ts`, one test assertion is added. No hook
+file content changes.
+
+- [ ] C12: `fireInstalledOnce` in `src/cli.ts` runs before command parsing and writes `~/.aislop/install_id` even when `hook install` then refuses a temporary-cache execution. Skip the pre-parse identity write when the process is a `hook install` from a temporary execution (`isTemporaryExecution(process.argv[1])` and no `--force-temporary`), so the refused run writes nothing under HOME. A later, stable run creates the identity as before. The probe skip stays
+- [ ] C11: `tests/hooks/install-copilot.test.ts` asserts `after.exec` equals the Node path and `after.args[0]` equals the CLI path from the same runtime the installer used, so swapping `exec` and `args[0]` in `copilotExec` fails the installer test, not only `runtime.test.ts`
+- [ ] Red-first for both, deletion checks pasted
+- [ ] Built-CLI check for C12: `pnpm pack`, `npx --yes --package=<tgz> aislop hook install --claude --global --yes` in a clean temp HOME exits 1 and leaves HOME with no `.aislop` directory and no `.claude` directory
+- [ ] Commit, staged by name
+
 ## Mechanisms
 
 | Mechanism | Property that must hold | Literal value | Test |
@@ -245,6 +256,8 @@ reports a root install as absent.
 | U7 doctor probe cwd | Doctor sends the project root in its probe payload | `root` passed to `runHookDoctorEntry` | `tests/hooks/hook-root.test.ts`: doctor probe sends the project root as cwd |
 | U7 status root | `hook status` reads the project scope from the project root | `resolveHookRoot` in `status-render.ts` | `tests/hooks/hook-root.test.ts`: status root |
 | U7 global unchanged | Global scope paths never use the project root | `home` for `scope === "global"` | `tests/hooks/hook-root.test.ts`: global unchanged |
+| U8 identity skip | A refused temporary `hook install` writes no identity file | `isTemporaryExecution(process.argv[1])` before `ensureInstallId` | |
+| U8 Copilot seam | Installer test pins `exec` to the Node path and `args[0]` to the CLI path | `after.exec === nodePath`, `after.args[0] === cliPath` | |
 
 ## Gates
 
@@ -264,6 +277,7 @@ reports a root install as absent.
 | G13 | Built-CLI fresh project blocks on the first regression after install, no manual baseline | yes | yes, Stop decision block, score 100 to 89, reviewer probe round 1, [p5-integration](../evidence/20261104-p5-integration.md) | [x] |
 | G14 | U7 rows with a reviewer-confirmed test | 4 of 4 | 4 of 4, plus uninstall, probe cwd, and single-resolution pins in round 2, [p5-integration](../evidence/20261104-p5-integration.md) | [x] |
 | G15 | Built CLI: root install, nested doctor exit 0 with runtime ok and baseline ok | yes | yes, both review rounds, [p5-integration](../evidence/20261104-p5-integration.md) | [x] |
+| G16 | U8 rows with a reviewer-confirmed test, and the npx refusal leaves HOME empty | 2 of 2, yes | | [ ] |
 | G9 | Builders labelled unverified on Windows in docs | present | present, README.md:294 and docs/commands.md:202, [p5-integration](../evidence/20261104-p5-integration.md) | [x] |
 
 ## Review log
