@@ -6,8 +6,9 @@ import {
 } from "../hooks/adapters/claude.js";
 import { runCursorHook } from "../hooks/adapters/cursor.js";
 import { runGeminiHook } from "../hooks/adapters/gemini.js";
-import { runPiHook } from "../hooks/adapters/pi.js";
 import { runOpenCodeHook } from "../hooks/adapters/opencode.js";
+import { runPiHook } from "../hooks/adapters/pi.js";
+import { ensureHookBaseline } from "../hooks/install/baseline-step.js";
 import {
 	AGENTS_PROJECT_ONLY,
 	AGENTS_SUPPORTING_BOTH_SCOPES,
@@ -16,18 +17,20 @@ import {
 	REGISTRY,
 	scopeHasManagedMarker,
 } from "../hooks/install/registry.js";
-import type {
-	HookInstallOpts,
-	HookInstallResult,
-	HookUninstallResult,
-} from "../hooks/install/types.js";
+import { type HookInstallRenderItem, renderHookInstall } from "../hooks/install/render-install.js";
+import type { HookInstallOpts, HookUninstallResult } from "../hooks/install/types.js";
 import { resolveHookRoot } from "../hooks/io/project-root.js";
+
+export { renderHookInstall } from "../hooks/install/render-install.js";
+
 import { captureBaseline } from "../hooks/quality-gate/baseline.js";
-import { flushTelemetry } from "../telemetry/client.js";
-import { resolveHookRuntime } from "../hooks/runtime/resolve.js";
 import { allowHookRuntimeInstall, writeInstalledHookRuntimes } from "../hooks/runtime/install.js";
+import { resolveHookRuntime } from "../hooks/runtime/resolve.js";
 import { hookMarker } from "../hooks/status-render.js";
+import { flushTelemetry } from "../telemetry/client.js";
+
 export { hookStatus, renderHookStatus } from "../hooks/status-render.js";
+
 import {
 	type DisplayRow,
 	type DisplayStatusItem,
@@ -65,13 +68,6 @@ interface InstallFlags {
 	qualityGate: boolean;
 	absolute?: boolean;
 	explicitScope?: boolean;
-}
-
-interface HookInstallRenderItem {
-	agent: AgentName;
-	scope: "global" | "project";
-	result: HookInstallResult;
-	absolute?: boolean;
 }
 
 interface HookUninstallRenderItem {
@@ -118,13 +114,16 @@ export const hookInstall = async (
 		runtimeScopes.add(opts.scope);
 	}
 	if (!flags.dryRun) writeInstalledHookRuntimes(runtimeScopes);
+	const baseline = flags.qualityGate
+		? await ensureHookBaseline(resolveHookRoot(process.cwd()), { dryRun: flags.dryRun })
+		: undefined;
 	if (flags.scope === "project") {
 		process.stdout.write("Reminder: .aislop/hook-runtime.json holds machine paths.\n");
 		if (flags.absolute) {
 			process.stderr.write("Reminder: do not commit hook files with absolute machine paths.\n");
 		}
 	}
-	process.stdout.write(renderHookInstall({ dryRun: flags.dryRun, items }));
+	process.stdout.write(renderHookInstall({ dryRun: flags.dryRun, items, baseline }));
 };
 
 export const hookUninstall = async (flags: InstallFlags): Promise<void> => {
@@ -146,11 +145,6 @@ export const hookUninstall = async (flags: InstallFlags): Promise<void> => {
 		}
 	}
 	process.stdout.write(renderHookUninstall({ dryRun: flags.dryRun, items }));
-};
-
-const installStatus = (item: HookInstallRenderItem, dryRun: boolean): string => {
-	if (dryRun) return item.result.planned.length > 0 ? "planned" : "up to date";
-	return item.result.wrote.length > 0 ? "updated" : "up to date";
 };
 
 const hookOperationItem = (item: HookOperationRenderItem): DisplayStatusItem => ({
@@ -183,45 +177,6 @@ const renderHookOperation = (input: {
 	}
 	return `${lines.join("\n")}\n`;
 };
-
-const installRows = (item: HookInstallRenderItem, dryRun: boolean): DisplayRow[] => {
-	const rows: DisplayRow[] = [
-		{ label: "Scope", value: item.scope },
-		{
-			label: "Command",
-			value: item.absolute ? "absolute Node and CLI paths" : "portable aislop command",
-		},
-	];
-	if (dryRun) {
-		for (const op of item.result.planned) {
-			rows.push({ label: "Path", value: op.path }, { label: "Change", value: op.summary });
-		}
-		return rows;
-	}
-	if (item.result.rewrittenFromPortable) {
-		rows.push({ label: "Rewrote portable command", value: "absolute Node and CLI paths" });
-	}
-	if (item.result.rewrittenFromStaleAbsolute) {
-		rows.push({ label: "Rewrote stale absolute command", value: "current Node and CLI paths" });
-	}
-	for (const path of item.result.wrote) rows.push({ label: "Wrote", value: path });
-	for (const path of item.result.skipped) rows.push({ label: "Skipped", value: path });
-	return rows;
-};
-
-export const renderHookInstall = (input: {
-	dryRun: boolean;
-	items: HookInstallRenderItem[];
-}): string =>
-	renderHookOperation({
-		command: "Hook install",
-		dryRun: input.dryRun,
-		items: input.items.map((item) => ({
-			agent: item.agent,
-			status: installStatus(item, input.dryRun),
-			rows: installRows(item, input.dryRun),
-		})),
-	});
 
 const uninstallRows = (item: HookUninstallRenderItem, dryRun: boolean): DisplayRow[] => [
 	{ label: "Scope", value: item.scope },

@@ -3,17 +3,19 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { hookStatus, renderHookStatus } from "../../src/commands/hook.js";
 import {
 	hookDoctorRuntime,
+	type ManagedEntry,
+	renderHookDoctor,
 	runHookDoctor,
 	runHookDoctorEntry,
-	type ManagedEntry,
 } from "../../src/hooks/doctor.js";
-import { hookInstall, hookStatus, renderHookStatus } from "../../src/commands/hook.js";
-import { resolveInstallIdPath } from "../../src/telemetry/identity.js";
-import { resolveHookRuntime } from "../../src/hooks/runtime/resolve.js";
+import { installClaude } from "../../src/hooks/install/claude.js";
 import { installOpenCode } from "../../src/hooks/install/opencode.js";
 import { installPi } from "../../src/hooks/install/pi.js";
+import { resolveHookRuntime } from "../../src/hooks/runtime/resolve.js";
+import { resolveInstallIdPath } from "../../src/telemetry/identity.js";
 import { APP_VERSION } from "../../src/version.js";
 
 const builtCli = path.resolve("dist/cli.js");
@@ -367,6 +369,122 @@ describe("hook doctor", () => {
 			expect(entry).toMatchObject({ started: false, delivered: false, exitCode: 1 });
 	});
 
+	it("reports the baseline state for Stop hooks and does not require it without one", async () => {
+		const home = temp();
+		const cwd = temp();
+		installClaude({ home, cwd, scope: "project", qualityGate: true });
+		let report = await runHookDoctor({ project: true, home, cwd });
+		expect(report.baseline).toEqual([{ scope: "project", status: "missing" }]);
+		expect(renderHookDoctor(report, false)).toContain(
+			"baseline: missing, quality gate inactive, run aislop hook install --quality-gate or aislop hook baseline",
+		);
+		fs.mkdirSync(path.join(cwd, ".aislop"), { recursive: true });
+		fs.writeFileSync(
+			path.join(cwd, ".aislop", "baseline.json"),
+			JSON.stringify({ schema: "aislop.baseline.v2", score: 88 }),
+		);
+		report = await runHookDoctor({ project: true, home, cwd });
+		expect(report.baseline).toEqual([{ scope: "project", status: "ok", score: 88 }]);
+		installClaude({ home, cwd, scope: "project", qualityGate: false });
+		report = await runHookDoctor({ project: true, home, cwd });
+		expect(report.baseline).toEqual([{ scope: "project", status: "not-required" }]);
+	});
+
+	it("uses the project-root baseline when the doctor runs from a nested directory", () => {
+		const home = temp();
+		const root = temp();
+		const cwd = path.join(root, "nested");
+		fs.mkdirSync(path.join(root, ".git"), { recursive: true });
+		fs.mkdirSync(cwd, { recursive: true });
+		installClaude({ home, cwd, scope: "project", absolute: true, qualityGate: true });
+		const settings = path.join(cwd, ".claude", "settings.json");
+		const installed = JSON.parse(fs.readFileSync(settings, "utf8")) as {
+			hooks: Record<string, Array<{ hooks: Array<{ command: string }> }>>;
+		};
+		for (const [event, groups] of Object.entries(installed.hooks))
+			groups[0].hooks[0].command = `${JSON.stringify(process.execPath)} ${JSON.stringify(builtCli)} hook claude${event === "Stop" ? " --stop" : ""}`;
+		fs.writeFileSync(settings, JSON.stringify(installed));
+		fs.mkdirSync(path.join(root, ".aislop"), { recursive: true });
+		fs.writeFileSync(
+			path.join(root, ".aislop", "baseline.json"),
+			JSON.stringify({ schema: "aislop.baseline.v2", score: 88 }),
+		);
+		const result = spawnSync(process.execPath, [builtCli, "hook", "doctor", "--project", "--json"], {
+			cwd,
+			env: { ...process.env, HOME: home, AISLOP_TELEMETRY: "0" },
+			encoding: "utf8",
+		});
+		expect(result.status).toBe(0);
+		expect(JSON.parse(result.stdout).baseline).toEqual([{ scope: "project", status: "ok", score: 88 }]);
+	});
+
+	it("exits one for a missing baseline and zero when it is present or not required", () => {
+		const home = temp();
+		const cwd = temp();
+		const settings = path.join(cwd, ".claude", "settings.json");
+		fs.mkdirSync(path.dirname(settings), { recursive: true });
+		fs.writeFileSync(
+			settings,
+			JSON.stringify({
+				hooks: {
+					PostToolUse: [
+						{
+							hooks: [
+								{
+									command: `${JSON.stringify(process.execPath)} ${JSON.stringify(builtCli)} hook claude`,
+									__aislop: { managed: true },
+								},
+							],
+						},
+					],
+					Stop: [
+						{
+							hooks: [
+								{
+									command: `${JSON.stringify(process.execPath)} ${JSON.stringify(builtCli)} hook claude --stop`,
+									__aislop: { managed: true },
+								},
+							],
+						},
+					],
+				},
+			}),
+		);
+		const run = () =>
+			spawnSync(process.execPath, [builtCli, "hook", "doctor", "--project", "--json"], {
+				cwd,
+				env: { ...process.env, HOME: home, AISLOP_TELEMETRY: "0" },
+				encoding: "utf8",
+			});
+		const missing = run();
+		expect(missing.status).toBe(1);
+		expect(JSON.parse(missing.stdout).baseline).toEqual([{ scope: "project", status: "missing" }]);
+		fs.mkdirSync(path.join(cwd, ".aislop"), { recursive: true });
+		fs.writeFileSync(
+			path.join(cwd, ".aislop", "baseline.json"),
+			JSON.stringify({ schema: "aislop.baseline.v2", score: 88 }),
+		);
+		expect(run().status).toBe(0);
+		fs.writeFileSync(
+			settings,
+			JSON.stringify({
+				hooks: {
+					PostToolUse: [
+						{
+							hooks: [
+								{
+									command: `${JSON.stringify(process.execPath)} ${JSON.stringify(builtCli)} hook claude`,
+									__aislop: { managed: true },
+								},
+							],
+						},
+					],
+				},
+			}),
+		);
+		expect(run().status).toBe(0);
+	});
+
 	it("uses the default timeout and kills the child at 10000 ms", async () => {
 		vi.useFakeTimers();
 		const child = new (await import("node:events")).EventEmitter() as any;
@@ -401,11 +519,11 @@ describe("hook doctor", () => {
 		for (const agent of ["claude", "pi", "opencode"]) {
 			const homeFiles = recursiveFiles(home);
 			const projectFiles = recursiveFiles(cwd);
-			const probeResult = spawnSync(
-				process.execPath,
-				[builtCli, "hook", agent, "--doctor-probe"],
-				{ cwd, env, encoding: "utf8" },
-			);
+			const probeResult = spawnSync(process.execPath, [builtCli, "hook", agent, "--doctor-probe"], {
+				cwd,
+				env,
+				encoding: "utf8",
+			});
 			expect(probeResult.status).toBe(0);
 			expect(recursiveFiles(home)).toEqual(homeFiles);
 			expect(recursiveFiles(cwd)).toEqual(projectFiles);

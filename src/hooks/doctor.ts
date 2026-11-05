@@ -2,14 +2,16 @@ import { spawn } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import {
-	ALL_AGENTS,
 	AGENTS_SUPPORTING_BOTH_SCOPES,
-	REGISTRY,
 	type AgentName,
+	ALL_AGENTS,
+	REGISTRY,
 } from "./install/registry.js";
 import { AISLOP_SENTINEL_KEY } from "./io/json-patch.js";
-import { readHookRuntime } from "./runtime/runtime-file.js";
+import { resolveHookRoot } from "./io/project-root.js";
+import { readBaseline } from "./quality-gate/baseline.js";
 import { resolveHookRuntime } from "./runtime/resolve.js";
+import { readHookRuntime } from "./runtime/runtime-file.js";
 
 const PROBE_SCHEMA = "aislop.hook.probe.v1";
 const HOOK_DOCTOR_TIMEOUT_MS = 10_000;
@@ -33,6 +35,7 @@ export interface HookDoctorEntry {
 	branch?: PluginBranch;
 	argv?: string[];
 	staleLineDelivered?: boolean;
+	stop?: boolean;
 }
 
 export interface HookDoctorRuntime {
@@ -41,9 +44,16 @@ export interface HookDoctorRuntime {
 	pairMatchesCurrent: boolean;
 }
 
+interface HookDoctorBaseline {
+	scope: Scope;
+	status: "missing" | "ok" | "not-required";
+	score?: number;
+}
+
 export interface HookDoctorReport {
 	entries: HookDoctorEntry[];
 	runtime: HookDoctorRuntime[];
+	baseline: HookDoctorBaseline[];
 }
 
 type SpawnProcess = (
@@ -317,6 +327,7 @@ const runPlugin = async (
 			branch: pluginBranch(call?.bin, call?.args, home, cwd),
 			argv: call ? [call.bin, ...call.args] : [],
 			staleLineDelivered,
+			stop: false,
 		};
 	} catch {
 		return {
@@ -332,6 +343,7 @@ const runPlugin = async (
 			branch: "bare",
 			argv: [],
 			staleLineDelivered: false,
+			stop: false,
 		};
 	} finally {
 		globals.__aislopSpawn = originalSpawn;
@@ -382,10 +394,21 @@ export const runHookDoctor = async (
 						eventGroup: entry.eventGroup,
 						commandForm: entry.exec ? "absolute" : "portable",
 						...result,
+						stop:
+							entry.args?.some((arg) => arg.includes("--stop")) ||
+							entry.command?.includes("--stop") ||
+							false,
 					});
 				}
 		}
-	return { entries, runtime: scopes.map((scope) => hookDoctorRuntime(scope, home, cwd)) };
+	const baselineRoot = resolveHookRoot(cwd);
+	const baseline = scopes.map((scope): HookDoctorBaseline => {
+		const hasStop = entries.some((entry) => entry.scope === scope && entry.stop === true);
+		if (!hasStop) return { scope, status: "not-required" };
+		const existing = readBaseline(baselineRoot);
+		return existing ? { scope, status: "ok", score: existing.score } : { scope, status: "missing" };
+	});
+	return { entries, runtime: scopes.map((scope) => hookDoctorRuntime(scope, home, cwd)), baseline };
 };
 
 export const renderHookDoctor = (report: HookDoctorReport, json: boolean): string => {
@@ -399,6 +422,15 @@ export const renderHookDoctor = (report: HookDoctorReport, json: boolean): strin
 		lines.push(
 			`${runtime.scope} runtime: ${runtime.status}, pair matches current=${runtime.pairMatchesCurrent}`,
 		);
+	for (const baseline of report.baseline) {
+		if (baseline.status === "missing")
+			lines.push(
+				`${baseline.scope} baseline: missing, quality gate inactive, run aislop hook install --quality-gate or aislop hook baseline`,
+			);
+		else if (baseline.status === "ok")
+			lines.push(`${baseline.scope} baseline: ok, score ${baseline.score}`);
+		else lines.push(`${baseline.scope} baseline: not required`);
+	}
 	if (report.entries.length === 0) lines.push("No managed hooks found.");
 	return `${lines.join("\n")}\n`;
 };

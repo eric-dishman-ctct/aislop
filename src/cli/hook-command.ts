@@ -12,9 +12,9 @@ import {
 	resolveAgents,
 } from "../commands/hook.js";
 import { loadConfig } from "../config/index.js";
+import { renderHookDoctor, runHookDoctor } from "../hooks/doctor.js";
 import { type AgentName, detectInstalledAgents } from "../hooks/install/registry.js";
 import { printHookRuntime } from "../hooks/runtime/status.js";
-import { renderHookDoctor, runHookDoctor } from "../hooks/doctor.js";
 import { withCommandLifecycle } from "../telemetry/index.js";
 import { log } from "../ui/logger.js";
 
@@ -238,7 +238,8 @@ const registerDoctor = (hook: Command): void => {
 			if (report.entries.length === 0) process.exitCode = 2;
 			else if (
 				report.entries.some((entry) => !entry.delivered || entry.provenanceMismatch) ||
-				report.runtime.some((item) => item.status === "stale")
+				report.runtime.some((item) => item.status === "stale") ||
+				report.baseline.some((item) => item.status === "missing")
 			)
 				process.exitCode = 1;
 		});

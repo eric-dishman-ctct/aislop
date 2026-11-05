@@ -1,7 +1,7 @@
+import { execFileSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
 import { afterEach, describe, expect, it } from "vitest";
 
 const tempDirs: string[] = [];
@@ -50,6 +50,45 @@ describe("U1 built-CLI resolution", () => {
 		}
 	});
 
+	it("U6 built CLI: blocks the first regression after quality-gate install", () => {
+		const cwd = tempDir();
+		const home = tempDir();
+		const cli = path.resolve("dist/cli.js");
+		const file = path.join(cwd, "regression.ts");
+		spawnSync("git", ["init", "-q"], { cwd, encoding: "utf8" });
+		fs.writeFileSync(file, "export const value = 1;\n");
+		execFileSync(
+			process.execPath,
+			[cli, "hook", "install", "--claude", "--project", "--quality-gate", "--yes"],
+			{
+				cwd,
+				env: { ...process.env, HOME: home, AISLOP_TELEMETRY: "0" },
+				encoding: "utf8",
+			},
+		);
+		expect(fs.existsSync(path.join(cwd, ".aislop", "baseline.json"))).toBe(true);
+		fs.writeFileSync(file, "export const value = {} as any;\n");
+		const post = {
+			hook_event_name: "PostToolUse",
+			cwd,
+			tool_name: "Edit",
+			tool_input: { path: file },
+		};
+		execFileSync(process.execPath, [cli, "hook", "claude"], {
+			cwd,
+			input: JSON.stringify(post),
+			env: { ...process.env, HOME: home, AISLOP_TELEMETRY: "0" },
+			encoding: "utf8",
+		});
+		const stop = execFileSync(process.execPath, [cli, "hook", "claude", "--stop"], {
+			cwd,
+			input: JSON.stringify({ hook_event_name: "Stop", cwd }),
+			env: { ...process.env, HOME: home, AISLOP_TELEMETRY: "0" },
+			encoding: "utf8",
+		});
+		expect(JSON.parse(stop).decision).toBe("block");
+	});
+
 	it("U5 built CLI: puts the quoted runtime command in regression feedback", () => {
 		const cwd = tempDir();
 		const cli = path.resolve("dist/cli.js");
@@ -60,9 +99,15 @@ describe("U1 built-CLI resolution", () => {
 			path.join(cwd, ".aislop", "baseline.json"),
 			JSON.stringify({ schema: "aislop.baseline.v2", score: 101, findingFingerprints: [] }),
 		);
-		fs.writeFileSync(path.join(cwd, ".aislop", "session.jsonl"), `${JSON.stringify({ files: [file] })}\n`);
+		fs.writeFileSync(
+			path.join(cwd, ".aislop", "session.jsonl"),
+			`${JSON.stringify({ files: [file] })}\n`,
+		);
 		const fixture = JSON.parse(
-			fs.readFileSync(path.join("tests", "hooks", "fixtures", "copilot-A-regression-Stop.json"), "utf8"),
+			fs.readFileSync(
+				path.join("tests", "hooks", "fixtures", "copilot-A-regression-Stop.json"),
+				"utf8",
+			),
 		)[0];
 		fixture.cwd = cwd;
 		const output = execFileSync(process.execPath, [cli, "hook", "claude", "--stop"], {
@@ -72,7 +117,9 @@ describe("U1 built-CLI resolution", () => {
 		});
 		const envelope = JSON.parse(output);
 		const feedback = JSON.parse(envelope.hookSpecificOutput.additionalContext);
-		const verify = feedback.suggestedActions.find((action: { id: string }) => action.id === "verify_fix");
+		const verify = feedback.suggestedActions.find(
+			(action: { id: string }) => action.id === "verify_fix",
+		);
 		expect(verify.command.startsWith(`'${fs.realpathSync(process.execPath)}'`)).toBe(true);
 		expect(verify.command).toContain(`'${fs.realpathSync(cli)}'`);
 		expect(verify.command.endsWith("scan --changes")).toBe(true);
